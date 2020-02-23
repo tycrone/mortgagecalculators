@@ -1,0 +1,344 @@
+
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+<head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><meta name="apple-mobile-web-app-capable" content="yes" />
+	<link rel="stylesheet" href="css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/wizard-overrides.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/custom.modernizr.js"></script>
+	<script src="js/wizard.js"></script>
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+	
+	<script type="text/javascript">
+		function PerformMagic() {
+			var PaymentsPerYear = forceNumber(document.getElementById('PP').value);
+			var LoanAmount = forceNumber(document.getElementById('LA').value);
+			var Payment = forceNumber(document.getElementById('MP').value);
+			var InterestRate = Math.round(forceNumber(document.getElementById('AI').value) * 1000) / 1000;
+			var PaymentsRemaining = forceNumber(document.getElementById('NM').value);
+
+			document.getElementById('PP').style.fontWeight = 'normal';
+			document.getElementById('LA').style.fontWeight = 'normal';
+			document.getElementById('MP').style.fontWeight = 'normal';
+			document.getElementById('AI').style.fontWeight = 'normal';
+			document.getElementById('NM').style.fontWeight = 'normal';
+			document.getElementById('errorMessage').innerHTML = '';
+
+			if (PaymentsPerYear < 1) {
+				PaymentsPerYear = 12;
+				document.getElementById('PP').value = 12;
+			}
+
+			var ComputedField = '';
+			if (document.getElementById('LA').value == '') ComputedField += 'LoanAmount';
+			if (document.getElementById('MP').value == '') ComputedField += 'Payment';
+			if (document.getElementById('AI').value == '') ComputedField += 'InterestRate';
+			if (document.getElementById('NM').value == '') ComputedField += 'PaymentsRemaining';
+
+			document.getElementById('LA').value = formatDollars(LoanAmount);
+			document.getElementById('MP').value = formatDollars(Payment);
+			document.getElementById('AI').value = InterestRate + '%';
+			document.getElementById('NM').value = PaymentsRemaining;
+
+			if (ComputedField == 'LoanAmount') {
+				var MonthlyInterest = InterestRate / (PaymentsPerYear * 100);
+				LoanAmount = Payment / (MonthlyInterest / (1 - Math.pow((1 + MonthlyInterest), -PaymentsRemaining)));
+				document.getElementById('LA').value = formatDollars(Math.floor(LoanAmount));
+				document.getElementById('LA').style.fontWeight = 'bold';
+			}
+			else if (ComputedField == 'Payment') {
+				//Always round up to next penny -- like banks do
+				var MonthlyInterest = InterestRate / (PaymentsPerYear * 100);
+				Payment = Math.floor(0.9999 + 100 * LoanAmount * MonthlyInterest / (1 - Math.pow((1 + MonthlyInterest), -PaymentsRemaining))) / 100;
+				document.getElementById('MP').value = formatDollars(Payment);
+				document.getElementById('MP').style.fontWeight = 'bold';
+			}
+			else if (ComputedField == 'InterestRate') {
+				if (Payment * PaymentsRemaining < LoanAmount) {
+					document.getElementById('errorMessage').innerHTML = "That payment is too low to ever pay off that loan";
+				}
+				else {
+					var LowInterest = 0;
+					var HighInterest = 500;
+					var CycleCounter = 0;
+
+					while ((LowInterest < HighInterest + .00001) && (CycleCounter < 500)) {
+						var TrialInterest = (LowInterest + HighInterest) / 2;
+						var MonthlyInterest = TrialInterest / (PaymentsPerYear * 100);
+						var TrialPayment = LoanAmount * MonthlyInterest / (1 - Math.pow((1 + MonthlyInterest), -PaymentsRemaining));
+
+						if (TrialPayment < Payment) {
+							LowInterest = TrialInterest;
+						}
+						else {
+							HighInterest = TrialInterest;
+						}
+						CycleCounter++;
+					}
+
+					InterestRate = Math.round(TrialInterest * 1000) / 1000;
+					document.getElementById('AI').value = InterestRate + '%';
+					document.getElementById('AI').style.fontWeight = 'bold';
+
+					if (TrialInterest >= 500) {
+						document.getElementById('errorMessage').innerHTML = "That payment is too low to ever pay off that loan";
+					}
+				}
+			}
+			else if (ComputedField == 'PaymentsRemaining') {
+				var MonthlyInterest = InterestRate / (PaymentsPerYear * 100);
+				var LowPaymentsRemaining = 0;
+				var HighPaymentsRemaining = PaymentsPerYear * 200;
+				var CycleCounter = 0;
+
+				while ((LowPaymentsRemaining < HighPaymentsRemaining + .01) && (CycleCounter < 500)) {
+					TrialPaymentsRemaining = (LowPaymentsRemaining + HighPaymentsRemaining) / 2;
+					var TrialPayment = LoanAmount * MonthlyInterest / (1 - Math.pow((1 + MonthlyInterest), -TrialPaymentsRemaining));
+					if (TrialPayment > Payment) {
+						LowPaymentsRemaining = TrialPaymentsRemaining;
+					}
+					else {
+						HighPaymentsRemaining = TrialPaymentsRemaining;
+					}
+					CycleCounter++;
+				}
+
+				PaymentsRemaining = Math.ceil(TrialPaymentsRemaining);
+				document.getElementById('NM').value = Math.round(PaymentsRemaining);
+				document.getElementById('NM').style.fontWeight = 'bold';
+
+				if (TrialPaymentsRemaining >= PaymentsPerYear * 190) {
+					var MinPayment = LoanAmount * MonthlyInterest;
+					document.getElementById('errorMessage').innerHTML = "You will never pay off your loan, the required minimum is " + formatDollars(MinPayment) + " just to cover interest";
+				}
+			}
+			else if (ComputedField == '') {
+				document.getElementById('errorMessage').innerHTML = "Please leave one (and only one) field empty, to be computed";
+			}
+			else {
+				document.getElementById('errorMessage').innerHTML = "Please leave only one field empty, to be computed";
+			}
+
+			document.getElementById('numPayments').innerHTML = PaymentsRemaining;
+			document.getElementById('totalYears').innerHTML = Math.floor((PaymentsRemaining * 100) / PaymentsPerYear) / 100;
+
+			if (InterestRate <= 0) {
+				document.getElementById('totalPayments').innerHTML = formatDollars(PaymentsRemaining * Payment);
+				document.getElementById('totalInterest').innerHTML = "0";
+			}
+			else {
+				var TotalInterest = 0;
+				var CurrentLoanAmount = LoanAmount;
+				var MonthlyInterest = InterestRate / (PaymentsPerYear * 100);
+
+				for (var i = 0; i < PaymentsRemaining; i++) {
+					TotalInterest = TotalInterest + (CurrentLoanAmount * MonthlyInterest);
+					CurrentLoanAmount = CurrentLoanAmount * (1 + MonthlyInterest) - Payment;
+				}
+				document.getElementById('totalPayments').innerHTML = formatDollars(LoanAmount + TotalInterest);
+				document.getElementById('totalInterest').innerHTML = formatDollars(TotalInterest);
+			}
+
+			document.getElementById('output').style.display = 'block';
+
+			if ((document.getElementById('errorMessage').innerHTML != null) && (document.getElementById('errorMessage').innerHTML != '')) {
+				document.getElementById('noncompute').style.display = 'block';
+				document.getElementById('results').style.display = 'none';
+			}
+			else {
+				document.getElementById('noncompute').style.display = 'none';
+				document.getElementById('results').style.display = 'block';
+			}
+		}
+
+		function GoBack() {
+			document.location.href = document.location.href;
+		}
+
+		function forceNumber(n) {
+			n = n.replace('$', '');
+			n = n.replace('%', '');
+			n = n.replace(',', '');
+			returnval = parseFloat(n);
+			if (isNaN(returnval)) {
+				return 0;
+			}
+			else {
+				return returnval;
+			}
+		}
+
+		function formatCurrency(num) {
+			num = num.toString().replace(/\$|\,/g, '');
+			if (isNaN(num))
+				num = "0";
+			sign = (num == (num = Math.abs(num)));
+			num = Math.floor(num * 100 + 0.50000000001);
+			cents = num % 100;
+			num = Math.floor(num / 100).toString();
+			if (cents < 10)
+				cents = "0" + cents;
+			for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+				num = num.substring(0, num.length - (4 * i + 3)) + ',' +
+            num.substring(num.length - (4 * i + 3));
+			return (((sign) ? '' : '-') + '$' + num + '.' + cents);
+		}
+
+		function formatDollars(num) {
+			var numCurrency = formatCurrency(num);
+			if (numCurrency.indexOf('.', 0) > 0)
+				return numCurrency.substr(0, numCurrency.indexOf('.', 0));
+			else
+				return numCurrency;
+		}
+	</script>
+</head>
+<body>
+	<form name="aspnetForm" method="post" action="./missingterm.aspx" id="aspnetForm" class="custom">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJNDMyNDU0NjAzD2QWAmYPZBYCAgMPZBYGZg9kFgQCAQ8PFgIeCEltYWdlVXJsBVxodHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vbG9nb3MvM2MxYjJiN2UtYmM5NS00NmU4LTg3YzQtOTFjMTYyZDU0OTI2LkpQR2RkAgMPDxYCHgRUZXh0BVk8YSBjbGFzcz0ic2l0ZS1waG9uZSBwdWxsLXJpZ2h0IiBocmVmPSJ0ZWw6KDcwMykgNTA1LTI5OTkiPkNhbGwgVG9kYXkhICg3MDMpIDUwNS0yOTk5PC9hPmRkAgIPZBYEAgEPFgIfAQVyPGxpPjxhIGhyZWY9Imh0dHA6Ly93d3cubGlua2VkaW4uY29tL2luL2FuZHlzaWtvcmEiPjxpbWcgc3JjPSJhc3NldHMvaW1nL3NvY2lhbC1pY29ucy9saW5rZWRpbl8xNi5wbmciIC8+PC9hPjwvbGk+ZAIFDxYCHwEFaTxsaT48YSBocmVmPSJodHRwOi8vdHdpdHRlci5jb20vYW5keXNpa29yYSI+PGltZyBzcmM9ImFzc2V0cy9pbWcvc29jaWFsLWljb25zL3R3aXR0ZXJfMTYucG5nIiAvPjwvYT48L2xpPmQCAw9kFgQCAQ9kFhQCAQ8PFgIfAQULQW5keSBTaWtvcmFkZAIDDw8WAh8BBQ5CcmFuY2ggTWFuYWdlcmRkAgUPDxYCHwEFBjIwNzkxMGRkAgcPDxYCHwEFGUNvbG9uaWFsIE1vcnRnYWdlIENhcGl0YWxkZAIJDw8WAh8BBTIxMTg5MCBTdW5yaXNlIFZhbGxleSBEcmlpdmU8YnIgLz5SZXN0b24sIFZBICAyMDE5MWRkAgsPDxYCHwEFOFA6IDxhIGhyZWY9InRlbDooNzAzKSA1MDUtMjk5OSI+KDcwMykgNTA1LTI5OTk8L2E+PGJyIC8+ZGQCDQ8PFgIfAQUVRjogNzAzLTgyMi03MTcxPGJyIC8+ZGQCDw8WAh8BBTw8YSBocmVmPSJtYWlsdG86YW5keUBhbmR5c2lrb3JhLmNvbSI+YW5keUBhbmR5c2lrb3JhLmNvbTwvYT5kAhEPFgIfAQUbVzogd3d3LkNvbG9uaWFsTUMuY29tPGJyIC8+ZAITDw8WAh8ABV1odHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vcGhvdG9zLzNjMWIyYjdlLWJjOTUtNDZlOC04N2M0LTkxYzE2MmQ1NDkyNi5qcGdkZAIDD2QWAmYPZBYCAgEPFgIfAWVkZFroPCRxGL2vRhBJUtg3X2emhWRyfIymWUziCAOFJl8O" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="DBA381DF" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABGmX+ukq/kq1Pt/rJAS7yQMogmBS619ufGOQCRch/rjpnWuyN84WFsUAiFY9gke9kSV43xXrzJdwqsfAKvR6iPS9AHOABIAWK7lNkZJF5mVB5l1LyzftyNHW3dVeAl8qRHd4x1Eudfw0tJhDvxFDHSp2L4Uf6GSC21dTyKtI6vlTHkIAZEUuKdjMTDZv6UhuJsnJMaGF6vBUMMDfnoH7BuCRhpJeEveoLeg6TFutCXtTw6/dJPN1qi5eqpg/XotidZN1nwC5sFQu3QrVOYIc0DZFTkOdk8Y91W2hcJK6QYe6CLBUgbNQW8pCAdCP7WyvTKegb2xEb3zI7SG0L0EQkPnnsHKH2OwBN5cpgal3/tVN8wdn7+wUiZJ3RImhTShIr/BS/rWxTNol++yYomnv5Ag" />
+</div>
+	
+	<section id="notification-section" class="hide-for-small">
+		<div class="row">
+			<div class="small-12 large-12 columns">
+				<!--[if lt IE 7]>
+				<div class="alert-box alert">
+	            <p>You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+					<a href="" class="close"><i class="icon-remove-circle"></i></a>
+		  		</div>
+				<![endif]-->
+				
+			</div>
+		</div>
+	</section>
+	
+	<section id="main-content-section">
+            <a name="calc"></a>
+			<div class="large-5 columns">
+				<div class="panel radius widget">
+					<div class="widget-header">
+						<div id="ctl00_RightArea_SpeachBubble1_speachbubbledisplay" class="triangle-border top"></div>
+					</div>
+					<div class="widget-content">
+						<div class="row">
+							<div class="large-12 columns">
+								
+	<script type="text/javascript">
+		$(function () {
+		    $('#ctl00_RightArea_SpeachBubble1_speachbubbledisplay')[0].innerHTML = "<strong>This calculator finds one missing variable for a loan.</strong>  If you know the payment, term and the loan amount it calculates the interest rate.  If you know the payment, loan and the interest rate, it calculates the term.   Make sure to leave one box (and only one box) empty, and click Calculate Now.";
+		});
+	</script>
+	<div id="calculator">
+		<div id="input">
+			<h2>Change these fields as desired:</h2>
+			<table>
+				<tr>
+					<td class="labelcell">
+						Payments Per Year
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="PP" name="PP" value="12" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<th colspan="2">
+						<h2>Leave one of these fields blank:</h2>
+					</th>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Loan Amount
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="LA" name="LA" value="$250,000" />
+						</div>
+					</td>
+				</tr>
+<!--
+            <tr>
+                <td class="labelcell">
+                    Loan Type
+                </td>
+                <td class="valuecell">
+                    <div>
+                        <select id="LT" name="LT">
+                            <option value="AM" selected>Amortizing</option>
+                            <option value="IO">Interest Only</option>
+                        </select>
+                    </div>
+                </td>
+            </tr>
+-->
+				<tr>
+					<td class="labelcell">
+						Periodic Payment (Does not include escrow payments - property tax & insurance - or PMI!)
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="MP" name="MP" value="" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Annual Interest Rate
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="AI" name="AI" value="6%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Number of Payments Remaining
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="NM" name="NM" value="360" />
+						</div>
+					</td>
+				</tr>
+			</table>
+			<input class="formButton" type="button" value="Calculate Now" onclick="PerformMagic();">
+		</div>
+		<div id="output" style="display: none;">
+			<div id="noncompute" style="display: none;">
+				<h3><span id="errorMessage"></span></h3>
+			</div>
+			<div id="results" style="display: none;">
+				<h2><span id="numPayments"></span>&nbsp;payments equals <span id="totalYears"></span>&nbsp;Years</h2>
+				<h2>Total Payments = <span id="totalPayments"></span></h2>
+				<h2>Total Interest = <span id="totalInterest"></span></h2>
+			</div>
+			<p class="disclosure">Information and interactive calculators are made available to you, as self-help tools for your independent use and are not intended to provide investment advice. We cannot and do not guarantee their applicability or accuracy in regards to anyone’s individual circumstances. All examples are hypothetical and are for illustrative purposes. Related to tax implications, property purchase and sale prices, and loan terms clients need to seek personalized advice from qualified real estate and tax professionals.</p>
+		</div>
+	</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<footer>
+		<div class="row">
+			<div class="large-12 columns">
+			</div>
+		</div>
+	</footer>
+
+	</form>
+</body>
+</html>

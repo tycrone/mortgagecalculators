@@ -1,0 +1,220 @@
+
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+<head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><meta name="apple-mobile-web-app-capable" content="yes" />
+	<link rel="stylesheet" href="css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/wizard-overrides.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/custom.modernizr.js"></script>
+	<script src="js/wizard.js"></script>
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+	
+	<script type="text/javascript">
+		function PerformMagic() {
+			var MortgageInterestRate = forceNumber(document.getElementById('IR').value);
+			var InvestmentReturnRate = forceNumber(document.getElementById('YR').value);
+			var FederalTaxRate = forceNumber(document.getElementById('FT').value);
+			var StateTaxRate = forceNumber(document.getElementById('ST').value);
+			var CombinedTax = FederalTaxRate + StateTaxRate;
+			var CapitalGainsRate = forceNumber(document.getElementById('CG').value);
+
+			var MortgageEPR = MortgageInterestRate * (100 - CombinedTax) / 100;
+			var InvestmentEPR = InvestmentReturnRate * (100 - CombinedTax) / 100;
+			if (document.getElementById('TT').value == 'LTCG')
+			    InvestmentEPR = InvestmentReturnRate * (100 - CapitalGainsRate) / 100;
+
+			document.getElementById('ER').innerHTML = Math.round(MortgageEPR * 100) / 100;
+			document.getElementById('EY').innerHTML = Math.round(InvestmentEPR * 100) / 100;
+			document.getElementById('output').style.display = 'block';
+		}
+
+		function ChangeTaxes() {
+		    if (document.getElementById('TT').value == 'OI') {
+		        document.getElementById('CapGainsRow').style.display = 'none';
+		    }
+		    else {
+		        document.getElementById('CapGainsRow').style.display = 'table-row';
+		    }
+		}
+
+		function GoBack() {
+			document.location.href = document.location.href;
+		}
+
+		function forceNumber(n) {
+			n = n.replace('$', '');
+			n = n.replace('%', '');
+			n = n.replace(',', '');
+			returnval = parseFloat(n);
+			if (isNaN(returnval)) {
+				return 0;
+			}
+			else {
+				return returnval;
+			}
+		}
+
+		function formatCurrency(num) {
+			num = num.toString().replace(/\$|\,/g, '');
+			if (isNaN(num))
+				num = "0";
+			sign = (num == (num = Math.abs(num)));
+			num = Math.floor(num * 100 + 0.50000000001);
+			cents = num % 100;
+			num = Math.floor(num / 100).toString();
+			if (cents < 10)
+				cents = "0" + cents;
+			for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+				num = num.substring(0, num.length - (4 * i + 3)) + ',' +
+            num.substring(num.length - (4 * i + 3));
+			return (((sign) ? '' : '-') + '$' + num + '.' + cents);
+		}
+
+		function formatDollars(num) {
+			var numCurrency = formatCurrency(num);
+			if (numCurrency.indexOf('.', 0) > 0)
+				return numCurrency.substr(0, numCurrency.indexOf('.', 0));
+			else
+				return numCurrency;
+		}
+	</script>
+</head>
+<body>
+	<form name="aspnetForm" method="post" action="./effectiveinterest.aspx" id="aspnetForm" class="custom">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJNDMyNDU0NjAzD2QWAmYPZBYCAgMPZBYGZg9kFgQCAQ8PFgIeCEltYWdlVXJsBVxodHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vbG9nb3MvM2MxYjJiN2UtYmM5NS00NmU4LTg3YzQtOTFjMTYyZDU0OTI2LkpQR2RkAgMPDxYCHgRUZXh0BVk8YSBjbGFzcz0ic2l0ZS1waG9uZSBwdWxsLXJpZ2h0IiBocmVmPSJ0ZWw6KDcwMykgNTA1LTI5OTkiPkNhbGwgVG9kYXkhICg3MDMpIDUwNS0yOTk5PC9hPmRkAgIPZBYEAgEPFgIfAQVyPGxpPjxhIGhyZWY9Imh0dHA6Ly93d3cubGlua2VkaW4uY29tL2luL2FuZHlzaWtvcmEiPjxpbWcgc3JjPSJhc3NldHMvaW1nL3NvY2lhbC1pY29ucy9saW5rZWRpbl8xNi5wbmciIC8+PC9hPjwvbGk+ZAIFDxYCHwEFaTxsaT48YSBocmVmPSJodHRwOi8vdHdpdHRlci5jb20vYW5keXNpa29yYSI+PGltZyBzcmM9ImFzc2V0cy9pbWcvc29jaWFsLWljb25zL3R3aXR0ZXJfMTYucG5nIiAvPjwvYT48L2xpPmQCAw9kFgQCAQ9kFhQCAQ8PFgIfAQULQW5keSBTaWtvcmFkZAIDDw8WAh8BBQ5CcmFuY2ggTWFuYWdlcmRkAgUPDxYCHwEFBjIwNzkxMGRkAgcPDxYCHwEFGUNvbG9uaWFsIE1vcnRnYWdlIENhcGl0YWxkZAIJDw8WAh8BBTIxMTg5MCBTdW5yaXNlIFZhbGxleSBEcmlpdmU8YnIgLz5SZXN0b24sIFZBICAyMDE5MWRkAgsPDxYCHwEFOFA6IDxhIGhyZWY9InRlbDooNzAzKSA1MDUtMjk5OSI+KDcwMykgNTA1LTI5OTk8L2E+PGJyIC8+ZGQCDQ8PFgIfAQUVRjogNzAzLTgyMi03MTcxPGJyIC8+ZGQCDw8WAh8BBTw8YSBocmVmPSJtYWlsdG86YW5keUBhbmR5c2lrb3JhLmNvbSI+YW5keUBhbmR5c2lrb3JhLmNvbTwvYT5kAhEPFgIfAQUbVzogd3d3LkNvbG9uaWFsTUMuY29tPGJyIC8+ZAITDw8WAh8ABV1odHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vcGhvdG9zLzNjMWIyYjdlLWJjOTUtNDZlOC04N2M0LTkxYzE2MmQ1NDkyNi5qcGdkZAIDD2QWAmYPZBYCAgEPFgIfAWVkZIsEhCv0SKCamec1JDDwOp+s/Fe6Ij3HGx0u1WZFgVAm" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="44D7B153" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABFh0ZOo1Wk9Cma5lYpQpiobogmBS619ufGOQCRch/rjpnWuyN84WFsUAiFY9gke9kSV43xXrzJdwqsfAKvR6iPS9AHOABIAWK7lNkZJF5mVB5l1LyzftyNHW3dVeAl8qRHd4x1Eudfw0tJhDvxFDHSp2L4Uf6GSC21dTyKtI6vlTHkIAZEUuKdjMTDZv6UhuJsnJMaGF6vBUMMDfnoH7BuCRhpJeEveoLeg6TFutCXtTw6/dJPN1qi5eqpg/XotidZN1nwC5sFQu3QrVOYIc0DZFTkOdk8Y91W2hcJK6QYe6CLBUgbNQW8pCAdCP7WyvTKegb2xEb3zI7SG0L0EQkPnnsHKH2OwBN5cpgal3/tVN13KdFJPPA21kBHzvRA/yzzlAGpPtZdSDxjjXb9IFvc9" />
+</div>
+	
+
+
+	<section id="notification-section" class="hide-for-small">
+		<div class="row">
+			<div class="small-12 large-12 columns">
+				<!--[if lt IE 7]>
+				<div class="alert-box alert">
+	            <p>You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+					<a href="" class="close"><i class="icon-remove-circle"></i></a>
+		  		</div>
+				<![endif]-->
+				
+			</div>
+		</div>
+	</section>
+	
+	<section id="main-content-section">
+		
+            <a name="calc"></a>
+			<div class="large-5 columns">
+				<div class="panel radius widget">
+					<div class="widget-header">
+						<div id="ctl00_RightArea_SpeachBubble1_speachbubbledisplay" class="triangle-border top"></div>
+					</div>
+					<div class="widget-content">
+						<div class="row">
+							<div class="large-12 columns">
+								
+	<script type="text/javascript">
+		$(function () {
+		    $('#ctl00_RightArea_SpeachBubble1_speachbubbledisplay')[0].innerHTML = "<strong>This calculator compares the real after-tax interest rate of borrowing, with the after-tax yields on investments.</strong>  You can choose ordinary income, and we’ll tax your investments like regular income off your highest bracket.  Choose Long Term Capital Gains if you plan to hold investments for more than 12 months.  Calculate Now to see the difference.";
+		});
+	</script>
+	<div id="calculator">
+		<div id="input">
+			<h2>Change these fields as desired: </h2>
+			<table>
+				<tr>
+					<td class="labelcell">
+						Mortgage Interest Rate
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="IR" name="IR" value="6%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Expected Investment Return Rate
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="YR" name="YR" value="8%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Marginal Federal Tax Rate
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="FT" name="FT" value="25%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Marginal State Tax Rate
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="ST" name="ST" value="5%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Treat Investment Return as
+					</td>
+					<td class="valuecell">
+						<div>
+                            <select id="TT" onchange="ChangeTaxes()">
+                                <option value="OI">Ordinary Income</option>
+                                <option value="LTCG">Long Term Capital Gains</option>
+                            </select>
+						</div>
+					</td>
+				</tr>
+				<tr id="CapGainsRow" style="display: none">
+					<td class="labelcell">
+						Long Term Capital Gains
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="CG" name="CG" value="15%" />
+						</div>
+					</td>
+				</tr>
+			</table>
+			<input class="formButton" type="button" value="Calculate Now" onclick="PerformMagic();">
+		</div>
+		<div id="output" style="display: none;">
+			<h3>Effective After-Tax Loan Interest Rate: <span id="ER"></span>%</h3>
+			<h3>Effective After-Tax Investment Yield Rate: <span id="EY"></span>%</h3>
+			<p class="disclosure">Information and interactive calculators are made available to you, as self-help tools for your independent use and are not intended to provide investment advice. We cannot and do not guarantee their applicability or accuracy in regards to anyone’s individual circumstances. All examples are hypothetical and are for illustrative purposes. Related to tax implications, property purchase and sale prices, and loan terms clients need to seek personalized advice from qualified real estate and tax professionals.</p>
+		</div>
+	</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<footer>
+		<div class="row">
+			<div class="large-12 columns">
+			</div>
+		</div>
+	</footer>
+
+	</form>
+</body>
+</html>

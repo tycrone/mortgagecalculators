@@ -1,0 +1,401 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><meta name="apple-mobile-web-app-capable" content="yes" />
+	<link rel="stylesheet" href="css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/wizard-overrides.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/custom.modernizr.js"></script>
+	<script src="js/wizard.js"></script>
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+	<script type="text/javascript">
+		function PerformMagic() {
+			var LoanBalance = forceNumber(document.getElementById('L').value);
+			var Payment = forceNumber(document.getElementById('P').value);
+			var InterestRate = forceNumber(document.getElementById('R').value);
+			var LoanIsDeductable = document.getElementById('D').value;
+			var InvestmentReturnRate = forceNumber(document.getElementById('Y').value);
+			var TaxBracket = forceNumber(document.getElementById('X').value);
+			var InvestmentType = document.getElementById('S').value;
+
+			document.getElementById('LB').innerHTML = '$' + LoanBalance;
+			document.getElementById('CP').innerHTML = '$' + Payment;
+			document.getElementById('IR').innerHTML = InterestRate + '%';
+			document.getElementById('LID').innerHTML = document.getElementById('D').options[document.getElementById('D').selectedIndex].text;
+			document.getElementById('IRR').innerHTML = InvestmentReturnRate + '%';
+			document.getElementById('TB').innerHTML = TaxBracket + '%';
+			document.getElementById('IT').innerHTML = document.getElementById('S').options[document.getElementById('S').selectedIndex].text;
+
+			//Calculate Table
+			var BorrowingBalance = LoanBalance;
+			var BorrowInvestedBalance = LoanBalance;
+			var PayoffInvestedBalance = 0;
+
+			var MonthlyBorrowInt = InterestRate / 1200;
+			var TaxRate = TaxBracket / 100;
+
+			var MonthlyInvestInt = InvestmentReturnRate / 1200;
+			if (InvestmentType == '1') {
+				MonthlyInvestInt = MonthlyInvestInt * (1 - TaxRate);
+			}
+
+			var MonthCount = 0;
+			while ((BorrowingBalance > Payment) && (MonthCount < 600)) {
+				MonthCount++;
+
+				var InterestPaid = BorrowingBalance * MonthlyBorrowInt;
+				BorrowingBalance = BorrowingBalance + InterestPaid - Payment;
+				var TaxPaid = LoanIsDeductable * InterestPaid * TaxRate;
+				BorrowInvestedBalance = BorrowInvestedBalance * (1 + MonthlyInvestInt) + TaxPaid;
+
+				var IncomeEarned = PayoffInvestedBalance * MonthlyInvestInt;
+				PayoffInvestedBalance = PayoffInvestedBalance * (1 + MonthlyInvestInt) + Payment;
+
+				var ResultTable = document.getElementById('resultsTable');
+				var TableBody = ResultTable.getElementsByTagName('tbody')[0];
+				var NewRow = document.createElement('tr');
+
+				var Cell1 = document.createElement('td');
+				Cell1.innerHTML = MonthCount;
+				var Cell2 = document.createElement('td');
+				Cell2.innerHTML = formatDollars(BorrowingBalance);
+				var Cell3 = document.createElement('td');
+				Cell3.innerHTML = formatDollars(InterestPaid);
+				var Cell4 = document.createElement('td');
+				Cell4.innerHTML = formatDollars(TaxPaid);
+				var Cell5 = document.createElement('td');
+				Cell5.innerHTML = formatDollars(BorrowInvestedBalance);
+				var Cell6 = document.createElement('td');
+				Cell6.innerHTML = formatDollars(Payment);
+				var Cell7 = document.createElement('td');
+				Cell7.innerHTML = formatDollars(IncomeEarned);
+				var Cell8 = document.createElement('td');
+				Cell8.innerHTML = formatDollars(PayoffInvestedBalance);
+
+				NewRow.appendChild(Cell1);
+				NewRow.appendChild(Cell2);
+				NewRow.appendChild(Cell3);
+				NewRow.appendChild(Cell4);
+				NewRow.appendChild(Cell5);
+				NewRow.appendChild(Cell6);
+				NewRow.appendChild(Cell7);
+				NewRow.appendChild(Cell8);
+				TableBody.appendChild(NewRow);
+			}
+
+
+
+			if (BorrowInvestedBalance > PayoffInvestedBalance) {
+				document.getElementById('keepTotal').innerHTML = formatDollars(BorrowInvestedBalance - PayoffInvestedBalance);
+
+				document.getElementById('keepLoan').style.display = 'block';
+				document.getElementById('payLoan').style.display = 'none';
+			}
+			else {
+				document.getElementById('payTotal').innerHTML = formatDollars(PayoffInvestedBalance - BorrowInvestedBalance);
+
+				document.getElementById('keepLoan').style.display = 'none';
+				document.getElementById('payLoan').style.display = 'block';
+			}
+
+
+			document.getElementById('input').style.display = 'none';
+			document.getElementById('output').style.display = 'block';
+		}
+
+		function GoBack() {
+			document.location.href = document.location.href;
+		}
+
+		function forceNumber(n) {
+			n = n.replace('$', '');
+			n = n.replace('%', '');
+			n = n.replace(',', '');
+			returnval = parseFloat(n);
+			if (isNaN(returnval)) {
+				return 0;
+			}
+			else {
+				return returnval;
+			}
+		}
+
+		function formatCurrency(num) {
+			num = num.toString().replace(/\$|\,/g, '');
+			if (isNaN(num))
+				num = "0";
+			sign = (num == (num = Math.abs(num)));
+			num = Math.floor(num * 100 + 0.50000000001);
+			cents = num % 100;
+			num = Math.floor(num / 100).toString();
+			if (cents < 10)
+				cents = "0" + cents;
+			for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+				num = num.substring(0, num.length - (4 * i + 3)) + ',' +
+            num.substring(num.length - (4 * i + 3));
+			return (((sign) ? '' : '-') + '$' + num + '.' + cents);
+		}
+
+		function formatDollars(num) {
+			var numCurrency = formatCurrency(num);
+			if (numCurrency.indexOf('.', 0) > 0)
+				return numCurrency.substr(0, numCurrency.indexOf('.', 0));
+			else
+				return numCurrency;
+		}
+	</script>
+</head>
+<body>
+	<form name="aspnetForm" method="post" action="./payoffkeep.aspx" id="aspnetForm" class="custom">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJNDMyNDU0NjAzD2QWAmYPZBYCAgMPZBYGZg9kFgQCAQ8PFgIeCEltYWdlVXJsBVxodHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vbG9nb3MvM2MxYjJiN2UtYmM5NS00NmU4LTg3YzQtOTFjMTYyZDU0OTI2LkpQR2RkAgMPDxYCHgRUZXh0BVk8YSBjbGFzcz0ic2l0ZS1waG9uZSBwdWxsLXJpZ2h0IiBocmVmPSJ0ZWw6KDcwMykgNTA1LTI5OTkiPkNhbGwgVG9kYXkhICg3MDMpIDUwNS0yOTk5PC9hPmRkAgIPZBYEAgEPFgIfAQVyPGxpPjxhIGhyZWY9Imh0dHA6Ly93d3cubGlua2VkaW4uY29tL2luL2FuZHlzaWtvcmEiPjxpbWcgc3JjPSJhc3NldHMvaW1nL3NvY2lhbC1pY29ucy9saW5rZWRpbl8xNi5wbmciIC8+PC9hPjwvbGk+ZAIFDxYCHwEFaTxsaT48YSBocmVmPSJodHRwOi8vdHdpdHRlci5jb20vYW5keXNpa29yYSI+PGltZyBzcmM9ImFzc2V0cy9pbWcvc29jaWFsLWljb25zL3R3aXR0ZXJfMTYucG5nIiAvPjwvYT48L2xpPmQCAw9kFgQCAQ9kFhQCAQ8PFgIfAQULQW5keSBTaWtvcmFkZAIDDw8WAh8BBQ5CcmFuY2ggTWFuYWdlcmRkAgUPDxYCHwEFBjIwNzkxMGRkAgcPDxYCHwEFGUNvbG9uaWFsIE1vcnRnYWdlIENhcGl0YWxkZAIJDw8WAh8BBTIxMTg5MCBTdW5yaXNlIFZhbGxleSBEcmlpdmU8YnIgLz5SZXN0b24sIFZBICAyMDE5MWRkAgsPDxYCHwEFOFA6IDxhIGhyZWY9InRlbDooNzAzKSA1MDUtMjk5OSI+KDcwMykgNTA1LTI5OTk8L2E+PGJyIC8+ZGQCDQ8PFgIfAQUVRjogNzAzLTgyMi03MTcxPGJyIC8+ZGQCDw8WAh8BBTw8YSBocmVmPSJtYWlsdG86YW5keUBhbmR5c2lrb3JhLmNvbSI+YW5keUBhbmR5c2lrb3JhLmNvbTwvYT5kAhEPFgIfAQUbVzogd3d3LkNvbG9uaWFsTUMuY29tPGJyIC8+ZAITDw8WAh8ABV1odHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vcGhvdG9zLzNjMWIyYjdlLWJjOTUtNDZlOC04N2M0LTkxYzE2MmQ1NDkyNi5qcGdkZAIDD2QWAmYPZBYCAgEPFgIfAWVkZLLIGLSvAewSoUtePEitskiOIiRGalP2q2MpeVb5XPdb" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="38CF1FCD" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABGiKyH7xS+4+6BwpBHQu5HQogmBS619ufGOQCRch/rjpnWuyN84WFsUAiFY9gke9kSV43xXrzJdwqsfAKvR6iPS9AHOABIAWK7lNkZJF5mVB5l1LyzftyNHW3dVeAl8qRHd4x1Eudfw0tJhDvxFDHSp2L4Uf6GSC21dTyKtI6vlTHkIAZEUuKdjMTDZv6UhuJsnJMaGF6vBUMMDfnoH7BuCRhpJeEveoLeg6TFutCXtTw6/dJPN1qi5eqpg/XotidZN1nwC5sFQu3QrVOYIc0DZFTkOdk8Y91W2hcJK6QYe6CLBUgbNQW8pCAdCP7WyvTKegb2xEb3zI7SG0L0EQkPnnsHKH2OwBN5cpgal3/tVN0+6QW4FGTV2St9YzeleUB6B5f3yIoWT54vKe1XRTEdM" />
+</div>
+	
+	<section id="notification-section" class="hide-for-small">
+		<div class="row">
+			<div class="small-12 large-12 columns">
+				<!--[if lt IE 7]>
+				<div class="alert-box alert">
+	            <p>You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+					<a href="" class="close"><i class="icon-remove-circle"></i></a>
+		  		</div>
+				<![endif]-->
+				
+			</div>
+		</div>
+	</section>
+	
+	<section id="main-content-section">
+					           <a name="calc"></a>
+			<div class="large-5 columns">
+				<div class="panel radius widget">
+					<div class="widget-header">
+							<div id="ctl00_RightArea_SpeachBubble1_speachbubbledisplay" class="triangle-border top"></div>
+
+					</div>
+					<div class="widget-content">
+						<div class="row">
+							<div class="large-12 columns">
+								
+	<script type="text/javascript">
+		$(function () {
+		    $('#ctl00_RightArea_SpeachBubble1_speachbubbledisplay')[0].innerHTML = "<strong>This calculator estimates if you are better off paying off your mortgage now, or keeping your cash invested.</strong>  Enter your current payment, interest rate, and loan balance.  Is your mortgage interest deductible?  Then enter your Investment Return on the money you’d have to use to repay the mortgage.  Add your State and Federal Tax Bracket and Calculate Comparison to see which is better for you.";
+		});
+	</script>
+	<div id="calculator">
+		<div id="input">
+			<h2>Change these fields as desired:</h2>
+			<table>
+				<tr>
+					<td class="labelcell">
+						Current monthly payment (principal & interest only)
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="P" name="P" value="$1,498" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Current Annual Loan Interest Rate
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="R" name="R" value="6%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Current Loan Balance
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="L" name="L" value="$250,000" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Loan Interest Deductibility
+					</td>
+					<td class="valuecell">
+						<div>
+							<select name="D" id="D">
+								<option value="1">Yes</option>
+								<option value="0">No</option>
+							</select>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Expected Long Term Investment Return
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" name="Y" id="Y" value="6%">
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Expected Long Term Tax Rate (Federal &amp; State)
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="X" name="X" value="25%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Investment Type
+					</td>
+					<td class="valuecell">
+						<div>
+							<select name="S" id="S">
+								<option value="1">After-Tax</option>
+								<option value="0">Tax Deferred</option>
+							</select>
+						</div>
+					</td>
+				</tr>
+			</table>
+			<input class="formButton" type="button" value="Calculate Comparison" onclick="PerformMagic();">
+		</div>
+		<div id="output" style="display: none;">
+			<input class="formButton" type="button" value="Go Back" onclick="GoBack();">
+			<table class="resultsTable" cellspacing="0" cellpadding="10">
+				<tr>
+					<td class="labelcell">
+						Loan Balance
+					</td>
+					<td>
+						<span id="LB"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Current Payment
+					</td>
+					<td>
+						<span id="CP"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Loan Interest Rate
+					</td>
+					<td>
+						<span id="IR"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Loan Interest Deductibilty
+					</td>
+					<td>
+						<span id="LID"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Investment Return Rate
+					</td>
+					<td>
+						<span id="IRR"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Tax Bracket
+					</td>
+					<td>
+						<span id="TB"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Investment Type
+					</td>
+					<td>
+						<span id="IT">After-Tax</span>
+					</td>
+				</tr>
+			</table>
+			<div id="keepLoan">
+				<h2>Borrowed Investment - Payoff Investment : <span id="keepTotal"></span></h2>
+				<h2>In your case it is better off to keep the loan</h2>
+			</div>
+			<div id="payLoan">
+				<h2>Payoff Investment - Borrowed Investment : <span id="payTotal"></span></h2>
+				<h2>In your case it is better off to payoff the loan</h2>
+			</div>
+			<p><b>Assumptions:<br />
+			</b>Here I simply build up two investment accounts, one with a large initial lump sum equal to the loan balance, and one initially at zero but which is contributed the equivalent to the monthly payment. If the investment is after-tax the yield is reduced by the tax rate, otherwise it is unchanged. The savings due to tax deductions on the loan are also added as contributions to the investment to help demonstrate the effects of tax deductibility of interest that is lost in the payoff case.</p>
+			<table id="resultsTable" class="resultsTable" cellspacing="0" cellpadding="10">
+				<tr>
+					<td colspan="5">
+						<b>BORROWING</b>
+					</td>
+					<td colspan="3">
+						<b>PAYOFF</b>
+					</td>
+				</tr>
+				<tr>
+					<th class="th">
+						Month
+					</th>
+					<th class="th">
+						Loan Bal (B)
+					</th>
+					<th class="th">
+						Int Paid(B)
+					</th>
+					<th class="th">
+						Tax Ded (B)
+					</th>
+					<th class="th">
+						Inv Bal
+					</th>
+					<th class="th">
+						Contrib (P)
+					</th>
+					<th class="th">
+						Inc Earned (P)
+					</th>
+					<th class="th">
+						Bal (P)
+					</th>
+				</tr>
+			</table>
+			<p class="disclosure">Information and interactive calculators are made available to you, as self-help tools for your independent use and are not intended to provide investment advice. We cannot and do not guarantee their applicability or accuracy in regards to anyone’s individual circumstances. All examples are hypothetical and are for illustrative purposes. Related to tax implications, property purchase and sale prices, and loan terms clients need to seek personalized advice from qualified real estate and tax professionals.</p>
+		</div>
+	</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<footer>
+		<div class="row">
+			<div class="large-12 columns">
+			</div>
+		</div>
+	</footer>
+
+	</form>
+</body>
+</html>

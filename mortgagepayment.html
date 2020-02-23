@@ -1,0 +1,654 @@
+
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+<head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><meta name="apple-mobile-web-app-capable" content="yes" />
+	<link rel="stylesheet" href="css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/wizard-overrides.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/custom.modernizr.js"></script>
+	<script src="js/wizard.js"></script>
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+	
+	<script type="text/javascript">
+		function PerformMagic() {
+			var Principal_N = document.getElementById('prin');
+			var Principal = forceNumber(Principal_N.value);
+			var InterestRate_N = document.getElementById('intr');
+			var InterestRate = Math.round(forceNumber(InterestRate_N.value) * 1000) / 1000;
+			var TermYears_N = document.getElementById('term');
+			var TermYears = forceNumber(TermYears_N.value);
+			var StartingMonth_N = document.getElementById('strt');
+			var StartingMonth = forceNumber(StartingMonth_N.options[StartingMonth_N.selectedIndex].value);
+			var StartingYear_N = document.getElementById('stry');
+			var StartingYear = forceNumber(StartingYear_N.value);
+			var PrepayMethod_N = document.getElementById('prep');
+			var PrepayMethod = PrepayMethod_N.options[PrepayMethod_N.selectedIndex].value;
+			var PrepaymentAmount_N = document.getElementById('ppay');
+			var PrepaymentAmount = forceNumber(PrepaymentAmount_N.value);
+			var OneTimePrepaymentMonth = forceNumber(document.getElementById('ppno').value);
+			var ShowFullTable_N = document.getElementById('full');
+			var ShowFullAmortizationTable = (ShowFullTable_N.value == 'Yes');
+
+			var MonthName = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+			var TermMonths = TermYears * 12;
+			var MonthlyInterestRate = InterestRate / 1200;
+
+			if (TermMonths == 0) {
+				TermMonths = 360;
+			}
+
+			var Temp = Math.pow((1 + MonthlyInterestRate), (0 - TermMonths));
+			var Payment = 0;
+			if (Temp < 1) {
+				Payment = (Principal * MonthlyInterestRate) / (1 - Temp);
+			}
+			else {
+				Payment = Principal / TermMonths;
+			}
+
+			var TotalInterest = Payment * TermMonths - Principal;
+			var TotalInterest2 = 0;
+			var Balance = Principal;
+			var YearsInterest = 0;
+			var YearsPrincipal = 0;
+			var Month = 0;
+			var BiweeklyPrepay = 0;
+			var BiweeklyWeek = 0;
+			var MonthlyPrepay = 0;
+			var AnnualPrepay = 0;
+			var OneTimePrepay = 0;
+
+			document.getElementById('P').innerHTML = formatDollars(Principal);
+			document.getElementById('IR').innerHTML = InterestRate + '%';
+			document.getElementById('AP').innerHTML = TermYears + ' Years';
+			document.getElementById('SM').innerHTML = MonthName[StartingMonth];
+			document.getElementById('SY').innerHTML = StartingYear;
+
+			if (PrepayMethod == 'Bi-weekly-1') {
+				BiweeklyPrepay = Payment;
+				BiweeklyWeek = 2;
+				MonthlyPrepay = 0;
+				document.getElementById('BW1R').style.display = 'block';
+			}
+			if (PrepayMethod == 'Bi-weekly-2') {
+				BiweeklyPrepay = Payment / 2;
+				BiweeklyWeek = 1;
+				MonthlyPrepay = 0;
+				document.getElementById('BW2R').style.display = 'block';
+			}
+			if (PrepayMethod == 'Monthly') {
+				AnnualPrepay = 0;
+				MonthlyPrepay = PrepaymentAmount;
+				document.getElementById('MPP').innerHTML = formatDollars(MonthlyPrepay);
+				document.getElementById('MPPR').style.display = 'block';
+			}
+			if (PrepayMethod == 'Annually') {
+				AnnualPrepay = PrepaymentAmount;
+				MonthlyPrepay = 0;
+				document.getElementById('APP').innerHTML = formatDollars(AnnualPrepay);
+				document.getElementById('APPR').style.display = 'block';
+			}
+			if (PrepayMethod == 'One Time') {
+				OneTimePrepay = PrepaymentAmount;
+				MonthlyPrepay = 0;
+				document.getElementById('OTP').innerHTML = formatDollars(OneTimePrepay);
+				document.getElementById('OTPR').style.display = 'block';
+			}
+
+
+			if (OneTimePrepay > 0 && OneTimePrepaymentMonth == 0) {
+				Balance = Balance - OneTimePrepay;
+			}
+
+			var ResultsArea = document.getElementById('results');
+
+			if (BiweeklyWeek > 0) {
+				ResultsArea.innerHTML += '<h2>Your biweekly payment will be ' + formatDollars(Payment / 2) + '</h2>';
+			}
+			else {
+				ResultsArea.innerHTML += '<h2>Your monthly payment will be ' + formatDollars(Payment) + '</h2>';
+			}
+
+			if (MonthlyPrepay > 0) {
+				ResultsArea.innerHTML += '<h2> + Monthly Prepayment of ' + formatDollars(MonthlyPrepay) + ' = ' + formatDollars(Payment + MonthlyPrepay) + '</h2>';
+			}
+
+			MonthCounter = 1;
+			CurrentMonth = StartingMonth;
+
+			var ResultTable = document.getElementById('resultstable');
+			var TableBody = ResultTable.getElementsByTagName('tbody')[0];
+
+			var CurrentMonth = StartingMonth;
+			var CurrentYear = StartingYear;
+			var MonthCounter = 1;
+			var BiweeklyMonth = 0;
+			var OutputMonths = 12;
+			var TotalMonths = 0;
+			var YearsPayments = 0;
+
+			if (ShowFullAmortizationTable) {
+				OutputMonths = TermYears * 12;
+			}
+
+			while ((MonthCounter <= TermYears * 12) && (Balance > .01)) {
+				ThisMonthsInterest = MonthlyInterestRate * Balance;
+				YearsInterest = YearsInterest + ThisMonthsInterest;
+				TotalInterest2 = TotalInterest2 + ThisMonthsInterest;
+
+				ThisMonthsPrincipal = Payment - ThisMonthsInterest + MonthlyPrepay;
+				YearsPrincipal = YearsPrincipal + ThisMonthsPrincipal;
+
+				Balance = Balance - Payment + ThisMonthsInterest - MonthlyPrepay;
+				TotalMonths++;
+
+				if (MonthCounter <= OutputMonths) {
+					var NewRow = document.createElement('tr');
+
+					var Cell1 = document.createElement('td');
+					Cell1.innerHTML = CurrentYear;
+					var Cell2 = document.createElement('td');
+					Cell2.innerHTML = MonthName[CurrentMonth];
+					var Cell3 = document.createElement('td');
+					Cell3.innerHTML = formatDollars(ThisMonthsPrincipal);
+					var Cell4 = document.createElement('td');
+					Cell4.innerHTML = Math.round(ThisMonthsPrincipal * 10000 / Payment) / 100 + '%';
+					var Cell5 = document.createElement('td');
+					Cell5.innerHTML = formatDollars(ThisMonthsInterest);
+					var Cell6 = document.createElement('td');
+					Cell6.innerHTML = formatDollars(Balance);
+
+					NewRow.appendChild(Cell1);
+					NewRow.appendChild(Cell2);
+					NewRow.appendChild(Cell3);
+					NewRow.appendChild(Cell4);
+					NewRow.appendChild(Cell5);
+					NewRow.appendChild(Cell6);
+
+					TableBody.appendChild(NewRow);
+				}
+
+				if (MonthCounter == OneTimePrepaymentMonth && OneTimePrepay > 0) {
+					Balance = Balance - OneTimePrepay;
+					if (MonthCounter <= OutputMonths) {
+						var NewRow = document.createElement('tr');
+
+						var Cell1 = document.createElement('td');
+						Cell1.innerHTML = '-';
+						var Cell2 = document.createElement('td');
+						Cell2.innerHTML = 'PREPAY';
+						var Cell3 = document.createElement('td');
+						Cell3.innerHTML = formatDollars(OneTimePrepay);
+						var Cell4 = document.createElement('td');
+						Cell4.innerHTML = Math.round(OneTimePrepay * 10000 / Payment) / 100 + '%';
+						var Cell5 = document.createElement('td');
+						Cell5.innerHTML = formatDollars(0);
+						var Cell6 = document.createElement('td');
+						Cell6.innerHTML = formatDollars(Balance);
+
+						NewRow.appendChild(Cell1);
+						NewRow.appendChild(Cell2);
+						NewRow.appendChild(Cell3);
+						NewRow.appendChild(Cell4);
+						NewRow.appendChild(Cell5);
+						NewRow.appendChild(Cell6);
+
+						TableBody.appendChild(NewRow);
+					}
+				}
+
+				BiweeklyMonth++;
+				if (BiweeklyMonth == (BiweeklyWeek * 6)) {
+					Balance = Balance - BiweeklyPrepay;
+					BiweeklyMonth = 0;
+					YearsPrincipal = YearsPrincipal + BiweeklyPrepay;
+
+					if (MonthCounter <= OutputMonths) {
+						var NewRow = document.createElement('tr');
+
+						var Cell1 = document.createElement('td');
+						Cell1.innerHTML = '-';
+						var Cell2 = document.createElement('td');
+						Cell2.innerHTML = 'BIWEEKLY';
+						var Cell3 = document.createElement('td');
+						Cell3.innerHTML = formatDollars(BiweeklyPrepay);
+						var Cell4 = document.createElement('td');
+						Cell4.innerHTML = Math.round(BiweeklyPrepay * 10000 / Payment) / 100 + '%';
+						var Cell5 = document.createElement('td');
+						Cell5.innerHTML = formatDollars(0);
+						var Cell6 = document.createElement('td');
+						Cell6.innerHTML = formatDollars(Balance);
+
+						NewRow.appendChild(Cell1);
+						NewRow.appendChild(Cell2);
+						NewRow.appendChild(Cell3);
+						NewRow.appendChild(Cell4);
+						NewRow.appendChild(Cell5);
+						NewRow.appendChild(Cell6);
+
+						TableBody.appendChild(NewRow);
+					}
+				}
+
+				MonthCounter++;
+				CurrentMonth++;
+				YearsPayments++;
+				if (CurrentMonth > 12) {
+					if (AnnualPrepay > 0) {
+						Balance = Balance - AnnualPrepay;
+						YearsPrincipal = YearsPrincipal + AnnualPrepay;
+
+						var NewRow = document.createElement('tr');
+
+						var Cell1 = document.createElement('td');
+						Cell1.innerHTML = '<b>' + CurrentYear + '</b>';
+						var Cell2 = document.createElement('td');
+						Cell2.innerHTML = 'PREPAY';
+						var Cell3 = document.createElement('td');
+						Cell3.innerHTML = formatDollars(AnnualPrepay);
+						var Cell4 = document.createElement('td');
+						Cell4.innerHTML = Math.round(AnnualPrepay * 10000 / Payment) / 100 + '%';
+						var Cell5 = document.createElement('td');
+						Cell5.innerHTML = formatDollars(0);
+						var Cell6 = document.createElement('td');
+						Cell6.innerHTML = formatDollars(Balance);
+
+						NewRow.appendChild(Cell1);
+						NewRow.appendChild(Cell2);
+						NewRow.appendChild(Cell3);
+						NewRow.appendChild(Cell4);
+						NewRow.appendChild(Cell5);
+						NewRow.appendChild(Cell6);
+
+						TableBody.appendChild(NewRow);
+					}
+
+					var NewRow = document.createElement('tr');
+
+					var Cell1 = document.createElement('td');
+					Cell1.innerHTML = '<b>' + CurrentYear + '</b>';
+					var Cell2 = document.createElement('td');
+					Cell2.innerHTML = '';
+					var Cell3 = document.createElement('td');
+					Cell3.innerHTML = formatDollars(YearsPrincipal);
+					var Cell4 = document.createElement('td');
+					Cell4.innerHTML = Math.round(YearsPrincipal * 10000 / (YearsPayments * Payment)) / 100 + '%';
+					var Cell5 = document.createElement('td');
+					Cell5.innerHTML = formatDollars(YearsInterest);
+					var Cell6 = document.createElement('td');
+					Cell6.innerHTML = formatDollars(Balance);
+
+					NewRow.appendChild(Cell1);
+					NewRow.appendChild(Cell2);
+					NewRow.appendChild(Cell3);
+					NewRow.appendChild(Cell4);
+					NewRow.appendChild(Cell5);
+					NewRow.appendChild(Cell6);
+
+					TableBody.appendChild(NewRow);
+
+					CurrentYear++;
+					CurrentMonth = 1;
+					YearsPrincipal = 0;
+					YearsInterest = 0;
+					YearsPayments = 0;
+				}
+
+			}
+			if (TermYears > 0) {
+				AverageInterest = TotalInterest2 / (TermYears * 12);
+			}
+
+			var ResultsFooter = document.getElementById('resultsfooter');
+
+			ResultsFooter.innerHTML += '<hr><h2>Final Summary:</h2><ul>';
+
+			if (BiweeklyWeek > 0) {
+				ResultsFooter.innerHTML += '<li>Biweekly Payment: <b>' + formatDollars(Payment / 2) + '</b></li>';
+			}
+			else {
+				ResultsFooter.innerHTML += '<li>Monthly Payment: <b>' + formatDollars(Payment) + '</b></li>';
+			}
+			ResultsFooter.innerHTML += '<li>Total Interest: <b>' + formatDollars(TotalInterest) + '</b> (No pre-payment)</li>';
+			ResultsFooter.innerHTML += '<li>Total Interest: <b>' + formatDollars(TotalInterest2) + '</b> (As given)</li>';
+
+			if (TotalInterest2 > 0) {
+				ResultsFooter.innerHTML += '<li><b>SAVINGS: </b>' + formatDollars(TotalInterest - TotalInterest2) + ' Total Interest Saved, ' + Math.round(((TermMonths - TotalMonths) * 100 / 12)) / 100 + ' Years shorter loan</li>';
+			}
+			ResultsFooter.innerHTML += '<li>Avg Interest each month <b>' + formatDollars(AverageInterest) + '</b></li>';
+
+			if (TotalInterest2 < TotalInterest) {
+				var NormalAvgInterest = TotalInterest / TermMonths;
+				ResultsFooter.innerHTML += '<li><b>SAVINGS: </b> Normal Avg Interest/Month : ' + formatDollars(NormalAvgInterest) + ', You Save ' + formatDollars(NormalAvgInterest - AverageInterest) + '</li>';
+			}
+
+			ResultsFooter.innerHTML += '</ul>';
+
+			document.getElementById('input').style.display = 'none';
+			document.getElementById('output').style.display = 'block';
+		}
+
+		function GoBack() {
+			document.location.href = document.location.href;
+		}
+
+		function forceNumber(n) {
+			n = n.replace('$', '');
+			n = n.replace('%', '');
+			n = n.replace(',', '');
+			returnval = parseFloat(n);
+			if (isNaN(returnval)) {
+				return 0;
+			}
+			else {
+				return returnval;
+			}
+		}
+
+		function formatCurrency(num) {
+			num = num.toString().replace(/\$|\,/g, '');
+			if (isNaN(num))
+				num = "0";
+			sign = (num == (num = Math.abs(num)));
+			num = Math.floor(num * 100 + 0.50000000001);
+			cents = num % 100;
+			num = Math.floor(num / 100).toString();
+			if (cents < 10)
+				cents = "0" + cents;
+			for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+				num = num.substring(0, num.length - (4 * i + 3)) + ',' +
+            num.substring(num.length - (4 * i + 3));
+			return (((sign) ? '' : '-') + '$' + num + '.' + cents);
+		}
+
+		function formatDollars(num) {
+			var numCurrency = formatCurrency(num);
+			if (numCurrency.indexOf('.', 0) > 0)
+				return numCurrency.substr(0, numCurrency.indexOf('.', 0));
+			else
+				return numCurrency;
+		}
+	</script>
+</head>
+<body>
+	<form name="aspnetForm" method="post" action="./mortgagepayment.aspx" id="aspnetForm" class="custom">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJNDMyNDU0NjAzD2QWAmYPZBYCAgMPZBYGZg9kFgQCAQ8PFgIeCEltYWdlVXJsBVxodHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vbG9nb3MvM2MxYjJiN2UtYmM5NS00NmU4LTg3YzQtOTFjMTYyZDU0OTI2LkpQR2RkAgMPDxYCHgRUZXh0BVk8YSBjbGFzcz0ic2l0ZS1waG9uZSBwdWxsLXJpZ2h0IiBocmVmPSJ0ZWw6KDcwMykgNTA1LTI5OTkiPkNhbGwgVG9kYXkhICg3MDMpIDUwNS0yOTk5PC9hPmRkAgIPZBYEAgEPFgIfAQVyPGxpPjxhIGhyZWY9Imh0dHA6Ly93d3cubGlua2VkaW4uY29tL2luL2FuZHlzaWtvcmEiPjxpbWcgc3JjPSJhc3NldHMvaW1nL3NvY2lhbC1pY29ucy9saW5rZWRpbl8xNi5wbmciIC8+PC9hPjwvbGk+ZAIFDxYCHwEFaTxsaT48YSBocmVmPSJodHRwOi8vdHdpdHRlci5jb20vYW5keXNpa29yYSI+PGltZyBzcmM9ImFzc2V0cy9pbWcvc29jaWFsLWljb25zL3R3aXR0ZXJfMTYucG5nIiAvPjwvYT48L2xpPmQCAw9kFgQCAQ9kFhQCAQ8PFgIfAQULQW5keSBTaWtvcmFkZAIDDw8WAh8BBQ5CcmFuY2ggTWFuYWdlcmRkAgUPDxYCHwEFBjIwNzkxMGRkAgcPDxYCHwEFGUNvbG9uaWFsIE1vcnRnYWdlIENhcGl0YWxkZAIJDw8WAh8BBTIxMTg5MCBTdW5yaXNlIFZhbGxleSBEcmlpdmU8YnIgLz5SZXN0b24sIFZBICAyMDE5MWRkAgsPDxYCHwEFOFA6IDxhIGhyZWY9InRlbDooNzAzKSA1MDUtMjk5OSI+KDcwMykgNTA1LTI5OTk8L2E+PGJyIC8+ZGQCDQ8PFgIfAQUVRjogNzAzLTgyMi03MTcxPGJyIC8+ZGQCDw8WAh8BBTw8YSBocmVmPSJtYWlsdG86YW5keUBhbmR5c2lrb3JhLmNvbSI+YW5keUBhbmR5c2lrb3JhLmNvbTwvYT5kAhEPFgIfAQUbVzogd3d3LkNvbG9uaWFsTUMuY29tPGJyIC8+ZAITDw8WAh8ABV1odHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vcGhvdG9zLzNjMWIyYjdlLWJjOTUtNDZlOC04N2M0LTkxYzE2MmQ1NDkyNi5qcGdkZAIDD2QWAmYPZBYCAgEPFgIfAWVkZPIRDeq+7wfISgVO8St/3DrgoB69zCbcRXV8vYVmcTkC" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="E001F7C7" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABEz4h2MxlDZ4GIODpLq1aeYogmBS619ufGOQCRch/rjpnWuyN84WFsUAiFY9gke9kSV43xXrzJdwqsfAKvR6iPS9AHOABIAWK7lNkZJF5mVB5l1LyzftyNHW3dVeAl8qRHd4x1Eudfw0tJhDvxFDHSp2L4Uf6GSC21dTyKtI6vlTHkIAZEUuKdjMTDZv6UhuJsnJMaGF6vBUMMDfnoH7BuCRhpJeEveoLeg6TFutCXtTw6/dJPN1qi5eqpg/XotidZN1nwC5sFQu3QrVOYIc0DZFTkOdk8Y91W2hcJK6QYe6CLBUgbNQW8pCAdCP7WyvTKegb2xEb3zI7SG0L0EQkPnnsHKH2OwBN5cpgal3/tVN9u2DP9+RkdYom3IsRa6VB4lAmJixOF0HfP/eq553aGa" />
+</div>
+	
+	<section id="notification-section" class="hide-for-small">
+		<div class="row">
+			<div class="small-12 large-12 columns">
+				<!--[if lt IE 7]>
+				<div class="alert-box alert">
+	            <p>You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+					<a href="" class="close"><i class="icon-remove-circle"></i></a>
+		  		</div>
+				<![endif]-->
+				
+			</div>
+		</div>
+	</section>
+	
+
+	<section id="main-content-section">
+		<div class="row">
+			
+			</div>
+			
+            <a name="calc"></a>
+			<div class="large-5 columns">
+				<div class="panel radius widget">
+					<div class="widget-header">
+						<div id="ctl00_RightArea_SpeachBubble1_speachbubbledisplay" class="triangle-border top"></div>
+
+					</div>
+					<div class="widget-content">
+						<div class="row">
+							<div class="large-12 columns">
+								
+	<script type="text/javascript">
+		$(function() {
+		    $('#ctl00_RightArea_SpeachBubble1_speachbubbledisplay')[0].innerHTML = "<strong>This calculator solves for mortgage payment with option to prepay.</strong>  Input the Principal Loan Balance, Interest Rate, Term, Starting Month and Year.  Then select your Pre-payment frequency, the AMOUNT you’d Prepay, and select Calculate Now to see your results over time.";
+		});
+	</script>
+	<div id="calculator">
+		<div id="input">
+			<h2>Change these fields as desired:</h2>
+			<table>
+				<tr>
+					<td class="labelcell">
+						Principal Loan Balance
+					</td>
+					<td class="valuecell">
+							<input type="text" id="prin" name="prin" value="$250,000" />
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Annual Interest Rate (%)
+					</td>
+					<td class="valuecell">
+							<input type="text" id="intr" name="intr" value="6%" />
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Amortization Length (YEARS)
+					</td>
+					<td class="valuecell">
+							<input type="text" id="term" name="term" value="30" />
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Starting Month
+					</td>
+					<td class="valuecell">
+							<select id="strt" name="strt">
+								<option value="1">Jan</option>
+								<option value="2">Feb</option>
+								<option value="3">Mar</option>
+								<option value="4">Apr</option>
+								<option value="5">May</option>
+								<option value="6">Jun</option>
+								<option value="7">Jul</option>
+								<option value="8">Aug</option>
+								<option value="9">Sep</option>
+								<option value="10">Oct</option>
+								<option value="11">Nov</option>
+								<option value="12">Dec</option>
+							</select>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Starting Year
+					</td>
+					<td class="valuecell">
+							<input type="text" id="stry" name="stry" value="2010" />
+					</td>
+				</tr>
+                <tr>
+					<td class="labelcell">
+						Pre-payment method
+					</td>
+					<td class="valuecell">
+						<select id="prep" name="prep">
+							<option value="None">None</option>
+							<option value="Monthly">Monthly</option>
+							<option value="Annually">Annually</option>
+							<option value="Bi-weekly-2">Bi-weekly : 2 pmts each 6 months</option>
+							<option value="Bi-weekly-1">Bi-weekly : 1 pmt each 12 months</option>
+							<option value="One Time">One Time</option>
+						</select>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Monthly/Annually/One-Time Principal Prepayment AMOUNT
+					</td>
+					<td class="valuecell">
+							<input type="text" id="ppay" name="ppay" value="$100" />
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						One-Time Prepayment to be paid after month:
+					</td>
+					<td class="valuecell">
+							<input type="text" id="ppno" name="ppno" value="0" />
+					</td>
+				</tr>
+   				<tr style="display: none">
+					<td class="labelcell">
+						Show full amortization table?
+					</td>
+					<td class="valuecell">
+							<select id="full" name="full">
+								<option value="No" selected>No </option>
+								<option value="Yes">Yes </option>
+							</select>
+					</td>
+				</tr>
+			</table>
+			<input class="formButton" type="button" value="Calculate Now" onclick="PerformMagic();" />
+		</div>
+		<div id="output" style="display: none;">
+			<input class="formButton" type="button" value="Go Back" onclick="GoBack();" />
+			<table class="resultsTable">
+				<tr>
+					<td class="labelcell">
+						Principal
+					</td>
+					<td>
+						<span id="P"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Interest Rate
+					</td>
+					<td>
+						<span id="IR"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Amortization Period
+					</td>
+					<td>
+						<span id="AP"></span>
+					</td>
+				</tr>
+				<tr id="BW1R" style="display: none;">
+					<td class="labelcell">
+						BI-WEEKLY
+					</td>
+					<td>
+						1 full payment/yr
+					</td>
+				</tr>
+				<tr id="BW2R" style="display: none;">
+					<td class="labelcell">
+						BI-WEEKLY
+					</td>
+					<td>
+						2 half payments/yr
+					</td>
+				</tr>
+				<tr id="MPPR" style="display: none;">
+					<td class="labelcell">
+						Monthly pre-payment
+					</td>
+					<td>
+						<span id="MPP"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Starting Month
+					</td>
+					<td>
+						<span id="SM"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Starting Year
+					</td>
+					<td>
+						<span id="SY"></span>
+					</td>
+				</tr>
+				<tr id="APPR" style="display: none;">
+					<td class="labelcell">
+						Annual Prepayment
+					</td>
+					<td>
+						<span id="APP"></span>
+					</td>
+				</tr>
+				<tr id="OTPR" style="display: none;">
+					<td class="labelcell">
+						One-time Prepayment
+					</td>
+					<td>
+						<span id="OTP"></span>
+					</td>
+				</tr>
+			</table>
+			<div id="results">
+			</div>
+			<table id="resultstable" class="resultsTable">
+				<tr>
+					<th class="th">
+						Year
+					</th>
+					<th class="th">
+						Month
+					</th>
+					<th class="th">
+						Principal
+					</th>
+					<th class="th">
+						Principal %
+					</th>
+					<th class="th">
+						Interest
+					</th>
+					<th class="th">
+						Balance
+					</th>
+				</tr>
+			</table>
+			<div id="resultsfooter">
+			</div>
+			<p class="disclosure">Information and interactive calculators are made available to you, as self-help tools for your independent use and are not intended to provide investment advice. We cannot and do not guarantee their applicability or accuracy in regards to anyone’s individual circumstances. All examples are hypothetical and are for illustrative purposes. Related to tax implications, property purchase and sale prices, and loan terms clients need to seek personalized advice from qualified real estate and tax professionals.</p>
+		</div>
+	</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<footer>
+		<div class="row">
+			<div class="large-12 columns">
+			</div>
+		</div>
+	</footer>
+
+	</form>
+</body>
+</html>

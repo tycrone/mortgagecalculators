@@ -1,0 +1,504 @@
+
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+<head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><meta name="apple-mobile-web-app-capable" content="yes" />
+	<link rel="stylesheet" href="css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/wizard-overrides.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/custom.modernizr.js"></script>
+	<script src="js/wizard.js"></script>
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+	
+	<script type="text/javascript">
+		function PerformMagic() {
+
+			var MoneyToSpend = forceNumber(document.getElementById('M').value);
+			var LoanBalance = forceNumber(document.getElementById('L').value);
+			var Payment = forceNumber(document.getElementById('P').value);
+			var InterestRate = forceNumber(document.getElementById('R').value);
+			var LoanIsDeductable = document.getElementById('D').value;
+			var InvestmentReturnRate = forceNumber(document.getElementById('Y').value);
+			var TaxBracket = forceNumber(document.getElementById('X').value);
+			var InvestmentType = document.getElementById('S').value;
+
+			document.getElementById('LB').innerHTML = '$' + LoanBalance;
+			document.getElementById('CP').innerHTML = '$' + Payment;
+			document.getElementById('AP').innerHTML = '$' + MoneyToSpend;
+			document.getElementById('IR').innerHTML = InterestRate + '%';
+			document.getElementById('LID').innerHTML = document.getElementById('D').options[document.getElementById('D').selectedIndex].text;
+			document.getElementById('IRR').innerHTML = InvestmentReturnRate + '%';
+			document.getElementById('TB').innerHTML = TaxBracket + '%';
+			document.getElementById('IT').innerHTML = document.getElementById('S').options[document.getElementById('S').selectedIndex].text;
+
+			//Calculate Table
+			var PrePayBalance = LoanBalance;
+			var InvestLoanBalance = LoanBalance;
+			var InvestAcctBalance = 0;
+
+			var MonthlyBorrowInt = InterestRate / 1200;
+			var TaxRate = TaxBracket / 100;
+
+			var MonthlyInvestInt = InvestmentReturnRate / 1200;
+
+			var MonthCount = 0;
+			var PrePayTotalInterest = 0;
+			var InvestTotalInterest = 0;
+			var YearInvIntEarned = 0;
+
+			while ((PrePayBalance > (Payment + MoneyToSpend)) && (MonthCount < 600)) {
+				MonthCount++;
+
+				var PPInterestPaid = PrePayBalance * MonthlyBorrowInt;
+				PrePayTotalInterest = PrePayTotalInterest + PPInterestPaid;
+				var PPTaxPaid = LoanIsDeductable * PPInterestPaid * TaxRate;
+				PrePayBalance = PrePayBalance + PPInterestPaid - Payment - MoneyToSpend;
+
+				var InvestInterestPaid = InvestLoanBalance * MonthlyBorrowInt;
+				InvestTotalInterest = InvestTotalInterest + InvestInterestPaid;
+				var InvestTaxPaid = LoanIsDeductable * InvestInterestPaid * TaxRate;
+				InvestLoanBalance = InvestLoanBalance + InvestInterestPaid - Payment;
+
+				var InvestIntEarned = InvestAcctBalance * MonthlyInvestInt;
+				YearInvIntEarned = YearInvIntEarned + InvestIntEarned;
+				InvestAcctBalance = InvestAcctBalance + InvestIntEarned + MoneyToSpend + (InvestTaxPaid - PPTaxPaid);
+
+				var ResultTable = document.getElementById('resultsTable');
+				var TableBody = ResultTable.getElementsByTagName('tbody')[0];
+				var NewRow = document.createElement('tr');
+
+				//Take yearly taxes out of Investment
+				//It seems that we should be checking after 12 months, but the inhereted code
+				//checks after 13 so we've kept that.
+				if ((InvestmentType == '1') && (MonthCount != 1) && ((MonthCount % 12) == 1)) {
+					var YearlyTax = YearInvIntEarned * TaxRate;
+					InvestAcctBalance = InvestAcctBalance - YearlyTax;
+					YearInvIntEarned = 0;
+
+					var TaxRow = document.createElement('tr');
+					var Cell9 = document.createElement('td');
+					Cell9.colSpan = '7';
+					Cell9.innerHTML = 'TAX';
+					var Cell10 = document.createElement('td');
+					Cell10.innerHTML = formatDollars(YearlyTax);
+
+					TaxRow.appendChild(Cell9);
+					TaxRow.appendChild(Cell10);
+					TableBody.appendChild(TaxRow);
+				}
+
+				var Cell1 = document.createElement('td');
+				Cell1.innerHTML = MonthCount;
+				var Cell2 = document.createElement('td');
+				Cell2.innerHTML = formatDollars(PrePayBalance);
+				var Cell3 = document.createElement('td');
+				Cell3.innerHTML = formatDollars(PPInterestPaid);
+				var Cell4 = document.createElement('td');
+				Cell4.innerHTML = formatDollars(PPTaxPaid);
+				var Cell5 = document.createElement('td');
+				Cell5.innerHTML = formatDollars(InvestLoanBalance);
+				var Cell6 = document.createElement('td');
+				Cell6.innerHTML = formatDollars(InvestInterestPaid);
+				var Cell7 = document.createElement('td');
+				Cell7.innerHTML = formatDollars(InvestTaxPaid);
+				var Cell8 = document.createElement('td');
+				Cell8.innerHTML = formatDollars(InvestAcctBalance);
+
+				NewRow.appendChild(Cell1);
+				NewRow.appendChild(Cell2);
+				NewRow.appendChild(Cell3);
+				NewRow.appendChild(Cell4);
+				NewRow.appendChild(Cell5);
+				NewRow.appendChild(Cell6);
+				NewRow.appendChild(Cell7);
+				NewRow.appendChild(Cell8);
+				TableBody.appendChild(NewRow);
+
+			}
+
+			//Keep going until InvestmentLoan paid off
+			var NewMonthCount = MonthCount;
+			var NewInvestLoanBalance = InvestLoanBalance;
+			while ((NewInvestLoanBalance > Payment) && (NewMonthCount < 2400)) {
+				NewMonthCount++;
+
+				var InvestInterestPaid = NewInvestLoanBalance * MonthlyBorrowInt;
+				InvestTotalInterest = InvestTotalInterest + InvestInterestPaid;
+				var InvestTaxPaid = LoanIsDeductable * InvestInterestPaid * TaxRate;
+				NewInvestLoanBalance = NewInvestLoanBalance + InvestInterestPaid - Payment;
+			}
+
+			document.getElementById('years').innerHTML = Math.round((MonthCount / 12)* 100) / 100;
+			document.getElementById('prepayTotalInterest').innerHTML = formatDollars(PrePayTotalInterest);
+			document.getElementById('investTotalInterest').innerHTML = formatDollars(InvestTotalInterest);
+			document.getElementById('prepayPayback').innerHTML = Math.round((MonthCount / 12) * 100) / 100;
+			document.getElementById('investPayback').innerHTML = Math.round((NewMonthCount / 12) * 100) / 100;
+
+
+			if (InvestAcctBalance < InvestLoanBalance) {
+				document.getElementById('prepayTotal').innerHTML = formatDollars(InvestLoanBalance - InvestAcctBalance);
+
+				document.getElementById('prePay').style.display = 'block';
+				document.getElementById('invest').style.display = 'none';
+			}
+			else {
+				document.getElementById('investTotal').innerHTML = formatDollars(InvestAcctBalance - InvestLoanBalance);
+
+				document.getElementById('prePay').style.display = 'none';
+				document.getElementById('invest').style.display = 'block';
+			}
+
+
+			document.getElementById('input').style.display = 'none';
+			document.getElementById('output').style.display = 'block';
+		}
+
+		function GoBack() {
+			document.location.href = document.location.href;
+		}
+
+		function forceNumber(n) {
+			n = n.replace('$', '');
+			n = n.replace('%', '');
+			n = n.replace(',', '');
+			returnval = parseFloat(n);
+			if (isNaN(returnval)) {
+				return 0;
+			}
+			else {
+				return returnval;
+			}
+		}
+
+		function formatCurrency(num) {
+			num = num.toString().replace(/\$|\,/g, '');
+			if (isNaN(num))
+				num = "0";
+			sign = (num == (num = Math.abs(num)));
+			num = Math.floor(num * 100 + 0.50000000001);
+			cents = num % 100;
+			num = Math.floor(num / 100).toString();
+			if (cents < 10)
+				cents = "0" + cents;
+			for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+				num = num.substring(0, num.length - (4 * i + 3)) + ',' +
+            num.substring(num.length - (4 * i + 3));
+			return (((sign) ? '' : '-') + '$' + num + '.' + cents);
+		}
+
+		function formatDollars(num) {
+			var numCurrency = formatCurrency(num);
+			if (numCurrency.indexOf('.', 0) > 0)
+				return numCurrency.substr(0, numCurrency.indexOf('.', 0));
+			else
+				return numCurrency;
+		}
+	</script>
+</head>
+<body>
+	<form name="aspnetForm" method="post" action="./prepayinvest.aspx" id="aspnetForm" class="custom">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJNDMyNDU0NjAzD2QWAmYPZBYCAgMPZBYGZg9kFgQCAQ8PFgIeCEltYWdlVXJsBVxodHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vbG9nb3MvM2MxYjJiN2UtYmM5NS00NmU4LTg3YzQtOTFjMTYyZDU0OTI2LkpQR2RkAgMPDxYCHgRUZXh0BVk8YSBjbGFzcz0ic2l0ZS1waG9uZSBwdWxsLXJpZ2h0IiBocmVmPSJ0ZWw6KDcwMykgNTA1LTI5OTkiPkNhbGwgVG9kYXkhICg3MDMpIDUwNS0yOTk5PC9hPmRkAgIPZBYEAgEPFgIfAQVyPGxpPjxhIGhyZWY9Imh0dHA6Ly93d3cubGlua2VkaW4uY29tL2luL2FuZHlzaWtvcmEiPjxpbWcgc3JjPSJhc3NldHMvaW1nL3NvY2lhbC1pY29ucy9saW5rZWRpbl8xNi5wbmciIC8+PC9hPjwvbGk+ZAIFDxYCHwEFaTxsaT48YSBocmVmPSJodHRwOi8vdHdpdHRlci5jb20vYW5keXNpa29yYSI+PGltZyBzcmM9ImFzc2V0cy9pbWcvc29jaWFsLWljb25zL3R3aXR0ZXJfMTYucG5nIiAvPjwvYT48L2xpPmQCAw9kFgQCAQ9kFhQCAQ8PFgIfAQULQW5keSBTaWtvcmFkZAIDDw8WAh8BBQ5CcmFuY2ggTWFuYWdlcmRkAgUPDxYCHwEFBjIwNzkxMGRkAgcPDxYCHwEFGUNvbG9uaWFsIE1vcnRnYWdlIENhcGl0YWxkZAIJDw8WAh8BBTIxMTg5MCBTdW5yaXNlIFZhbGxleSBEcmlpdmU8YnIgLz5SZXN0b24sIFZBICAyMDE5MWRkAgsPDxYCHwEFOFA6IDxhIGhyZWY9InRlbDooNzAzKSA1MDUtMjk5OSI+KDcwMykgNTA1LTI5OTk8L2E+PGJyIC8+ZGQCDQ8PFgIfAQUVRjogNzAzLTgyMi03MTcxPGJyIC8+ZGQCDw8WAh8BBTw8YSBocmVmPSJtYWlsdG86YW5keUBhbmR5c2lrb3JhLmNvbSI+YW5keUBhbmR5c2lrb3JhLmNvbTwvYT5kAhEPFgIfAQUbVzogd3d3LkNvbG9uaWFsTUMuY29tPGJyIC8+ZAITDw8WAh8ABV1odHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vcGhvdG9zLzNjMWIyYjdlLWJjOTUtNDZlOC04N2M0LTkxYzE2MmQ1NDkyNi5qcGdkZAIDD2QWAmYPZBYCAgEPFgIfAWVkZF8PvvrM8yfCfVW1DGXexPdkcM99WxibPLzP3W0X986A" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="6001BF35" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABHJZjtmGI0++W2vA7yMuy45ogmBS619ufGOQCRch/rjpnWuyN84WFsUAiFY9gke9kSV43xXrzJdwqsfAKvR6iPS9AHOABIAWK7lNkZJF5mVB5l1LyzftyNHW3dVeAl8qRHd4x1Eudfw0tJhDvxFDHSp2L4Uf6GSC21dTyKtI6vlTHkIAZEUuKdjMTDZv6UhuJsnJMaGF6vBUMMDfnoH7BuCRhpJeEveoLeg6TFutCXtTw6/dJPN1qi5eqpg/XotidZN1nwC5sFQu3QrVOYIc0DZFTkOdk8Y91W2hcJK6QYe6CLBUgbNQW8pCAdCP7WyvTKegb2xEb3zI7SG0L0EQkPnnsHKH2OwBN5cpgal3/tVN2htfHwU7Cz12MBvuzj3yr62jzpIGOYAY7vOXv9Rlx3w" />
+</div>
+	
+	<section id="notification-section" class="hide-for-small">
+		<div class="row">
+			<div class="small-12 large-12 columns">
+				<!--[if lt IE 7]>
+				<div class="alert-box alert">
+	            <p>You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+					<a href="" class="close"><i class="icon-remove-circle"></i></a>
+		  		</div>
+				<![endif]-->
+				
+			</div>
+		</div>
+	</section>
+	
+
+
+	<section id="main-content-section">
+	
+            <a name="calc"></a>
+			<div class="large-5 columns">
+				<div class="panel radius widget">
+					<div class="widget-header">
+						<div id="ctl00_RightArea_SpeachBubble1_speachbubbledisplay" class="triangle-border top"></div>
+
+					</div>
+					<div class="widget-content">
+						<div class="row">
+							<div class="large-12 columns">
+								
+	<script type="text/javascript">
+		$(function () {
+		    $('#ctl00_RightArea_SpeachBubble1_speachbubbledisplay')[0].innerHTML = "<strong>This calculator compares putting extra cash toward prepaying the mortgage or saving in an investment.</strong>  We take into account your tax situation for state and federal taxes as an itemized filer.  Input how much extra you have to spend each month, your current payment, interest, current loan balance, if your mortgage is deductible, what you’d earn in your investment, your tax bracket and investment type, then Calculate Comparison.";
+		});
+	</script>
+	<div id="calculator">
+		<div id="input">
+			<h2>Change these fields as desired:</h2>
+			<table>
+				<tr>
+					<td class="labelcell">
+						How much more you have to spend each month?
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="M" name="M" value="$100" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Current monthly payment (principal & interest only)
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="P" name="P" value="$1,498" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Current Annual Loan Interest Rate
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="R" name="R" value="6%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Current Loan Balance
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="L" name="L" value="$250,000" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Loan Interest Deductibility
+					</td>
+					<td class="valuecell">
+						<div>
+							<select name="D" id="D">
+								<option value="1">Yes</option>
+								<option value="0">No</option>
+							</select>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Expected Long Term Investment Return
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" name="Y" id="Y" value="6%">
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Expected Long Term Tax Rate (Federal &amp; State)
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="X" name="X" value="25%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Investment Type
+					</td>
+					<td class="valuecell">
+						<div>
+							<select name="S" id="S">
+								<option value="1">After-Tax</option>
+								<option value="0">Tax Deferred</option>
+							</select>
+						</div>
+					</td>
+				</tr>
+			</table>
+			<input class="formButton" type="button" value="Calculate Comparison" onclick="PerformMagic();" />
+		</div>
+		<div id="output" style="display: none;">
+			<input class="formButton" type="button" value="Go Back" onclick="GoBack();" />
+			<table class="resultsTable" cellspacing="0" cellpadding="10">
+				<tr>
+					<td class="labelcell">
+						Loan Balance
+					</td>
+					<td>
+						<span id="LB"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Current Payment
+					</td>
+					<td>
+						<span id="CP"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Additional Payment
+					</td>
+					<td>
+						<span id="AP"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Loan Interest Rate
+					</td>
+					<td>
+						<span id="IR"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Loan Interest Deductibilty
+					</td>
+					<td>
+						<span id="LID"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Investment Return Rate
+					</td>
+					<td>
+						<span id="IRR"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Tax Bracket
+					</td>
+					<td>
+						<span id="TB"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Investment Type
+					</td>
+					<td>
+						<span id="IT">After-Tax</span>
+					</td>
+				</tr>
+			</table>
+			<table id="summaryTable" class="resultsTable" cellspacing="0" cellpadding="10">
+				<tr>
+					<th class="th">
+					</th>
+					<th class="th">
+						Prepay
+					</th>
+					<th class="th">
+						Invest
+					</th>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Total Interest (<span id="years"></span> yrs)
+					</td>
+					<td class="valuecell">
+						<span id="prepayTotalInterest"></span>
+					</td>
+					<td class="valuecell">
+						<span id="investTotalInterest"></span>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Loan Payback Time (Years)
+					</td>
+					<td class="valuecell">
+						<span id="prepayPayback"></span>
+					</td>
+					<td class="valuecell">
+						<span id="investPayback"></span>
+					</td>
+				</tr>
+			</table>
+			<div id="prePay">
+				<h2>Loan Balance - Investment : <span id="prepayTotal"></span></h2>
+				<h3>In your case it is wiser to prepay than to invest</h3>
+			</div>
+			<div id="invest">
+				<h2>Investment - Loan Balance : <span id="investTotal"></span></h2>
+				<h3>In your case it is wiser to invest than to prepay</h3>
+			</div>
+			<table id="resultsTable" class="resultsTable" cellspacing="0" cellpadding="10">
+				<tr>
+					<td colspan="4">
+						<b>PREPAYING</b>
+					</td>
+					<td colspan="4">
+						<b>INVESTING</b>
+					</td>
+				</tr>
+				<tr>
+					<th class="th">
+						Month
+					</th>
+					<th class="th">
+						Loan Bal (P)
+					</th>
+					<th class="th">
+						Int Paid (P)
+					</th>
+					<th class="th">
+						Tax Ded (P)
+					</th>
+					<th class="th">
+						Loan Bal (I)
+					</th>
+					<th class="th">
+						Int Paid (I)
+					</th>
+					<th class="th">
+						Tax Ded (I)
+					</th>
+					<th class="th">
+						Inv Bal (I)
+					</th>
+				</tr>
+			</table>
+			<p><b>Assumptions:</b><br />
+				This estimation assumes you will pay a fixed amount every month to either your loan prepayment or to some type of after-tax or tax deferred investment. If it is after-tax it will be more available to you, but every 12 months you will be forced to pay tax on your annual yield. This also assumes that you take the extra tax savings by NOT prepaying (prepaying lowers your deductible interest payments) and you put the tax savings into the investment as well. This also assumes that the top income tax rate will stay the same for a long time. This tax rate should also include your state income tax too if applicable.</p>
+			<p class="disclosure">Information and interactive calculators are made available to you, as self-help tools for your independent use and are not intended to provide investment advice. We cannot and do not guarantee their applicability or accuracy in regards to anyone’s individual circumstances. All examples are hypothetical and are for illustrative purposes. Related to tax implications, property purchase and sale prices, and loan terms clients need to seek personalized advice from qualified real estate and tax professionals.</p>
+		</div>
+	</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<footer>
+		<div class="row">
+			<div class="large-12 columns">
+			</div>
+		</div>
+	</footer>
+
+	</form>
+</body>
+</html>

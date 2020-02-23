@@ -1,0 +1,273 @@
+
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+<head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><meta name="apple-mobile-web-app-capable" content="yes" />
+	<link rel="stylesheet" href="css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/wizard-overrides.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/custom.modernizr.js"></script>
+	<script src="js/wizard.js"></script>
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+	
+	<script type="text/javascript">
+		function PerformMagic() {
+			var Payment = forceNumber(document.getElementById('pi').value);
+			var PropertyTax = forceNumber(document.getElementById('pt').value);
+			var HOI = forceNumber(document.getElementById('hi').value);
+			var DebtPayments = forceNumber(document.getElementById('mi').value);
+			var HomeValue = forceNumber(document.getElementById('hv').value);
+			var DownPayment = forceNumber(document.getElementById('dp').value);
+
+			var Results = document.getElementById('results');
+
+			var TotalMonthlyPayment = Payment + DebtPayments + (PropertyTax + HOI) / 12;
+			var TotalLenderMonthlyPayment = Payment + (PropertyTax + HOI) / 12;
+
+			Results.innerHTML += '<h2>Total monthly lender payment: ' + formatDollars(TotalLenderMonthlyPayment) + '</h2>';
+			Results.innerHTML += '<h2>Total monthly debt payment: ' + formatDollars(TotalMonthlyPayment) + '</h2>';
+
+			if (DownPayment == 0) {
+				if (HomeValue > 0) {
+					DownPayment == HomeValue * .2;
+				}
+				else {
+					DownPayment = 20000;
+				}
+			}
+			else {
+				if (HomeValue == 0) {
+					HomeValue = DownPayment * 5;
+				}
+			}
+
+			if (HomeValue == 0) {
+				HomeValue = 100000;
+			}
+
+			if ((DownPayment / HomeValue < .20) && (HomeValue > 0)) {
+				var PMIRate = .32;
+				if (DownPayment / HomeValue <= .15) {
+					PMIRate = .52;
+				}
+				if (DownPayment / HomeValue <= .10) {
+					PMIRate = .78;
+				}
+				if (DownPayment / HomeValue <= .05) {
+					PMIRate = .90;
+				}
+				if (DownPayment / HomeValue >= 0.03) {
+					var PMI = (HomeValue - DownPayment) * PMIRate / 1200;
+					Results.innerHTML += '<h2>Total monthly PMI payment ' + formatDollars(PMI) + '<br>( ' + PMIRate * 100 + '% a year on ' + formatDollars(HomeValue - DownPayment) + ' loan,<br> since your downpayment was ' + Math.round(DownPayment / HomeValue * 100) / 100 + '%)</h2>';
+				}
+				else {
+					Results.innerHTML += '<h2>With a down payment of ' + formatDollars(DownPayment) + ' on a purchase of ' + formatDollars(HomeValue) + '<br>';
+					Results.innerHTML += 'That is a downpayment of only ' + Math.round(DownPayment / HomeValue * 100) / 100 + '% !</h2>';
+					Results.innerHTML += '<h3>Sorry, but unless you are eligible for a <a href="http://www.va.gov/vas/loan/index.htm">VA loan</a> most lenders would require at least 3% down</h3><hr>';
+				}
+			}
+			else {
+				PMI = 0;
+			}
+
+			Income28 = ((Payment + PMI) * 12 + PropertyTax + HOI) / .28;
+			Income36 = ((Payment + DebtPayments + PMI) * 12 + PropertyTax + HOI) / .36;
+			if (Income28 > Income36) {
+				RequiredIncome = Income28;
+			}
+			else {
+				RequiredIncome = Income36;
+			}
+
+			Results.innerHTML += '<h2>28% Qualifying income: ' + formatDollars(Income28) + '</h2>';
+			Results.innerHTML += '<h2>36% Qualifying income: ' + formatDollars(Income36) + '</h2>';
+			Results.innerHTML += '<h2>So Minimum Qualifying income: ' + formatDollars(RequiredIncome) + '</h2>';
+			document.getElementById('AI').innerHTML = formatDollars(RequiredIncome);
+
+			document.getElementById('input').style.display = 'none';
+			document.getElementById('output').style.display = 'block';
+		}
+
+		function GoBack() {
+			document.location.href = document.location.href;
+		}
+
+		function forceNumber(n) {
+			n = n.replace('$', '');
+			n = n.replace('%', '');
+			n = n.replace(',', '');
+			returnval = parseFloat(n);
+			if (isNaN(returnval)) {
+				return 0;
+			}
+			else {
+				return returnval;
+			}
+		}
+
+		function formatCurrency(num) {
+			num = num.toString().replace(/\$|\,/g, '');
+			if (isNaN(num))
+				num = "0";
+			sign = (num == (num = Math.abs(num)));
+			num = Math.floor(num * 100 + 0.50000000001);
+			cents = num % 100;
+			num = Math.floor(num / 100).toString();
+			if (cents < 10)
+				cents = "0" + cents;
+			for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+				num = num.substring(0, num.length - (4 * i + 3)) + ',' +
+            num.substring(num.length - (4 * i + 3));
+			return (((sign) ? '' : '-') + '$' + num + '.' + cents);
+		}
+
+		function formatDollars(num) {
+			var numCurrency = formatCurrency(num);
+			if (numCurrency.indexOf('.', 0) > 0)
+				return numCurrency.substr(0, numCurrency.indexOf('.', 0));
+			else
+				return numCurrency;
+		}
+	</script>
+</head>
+<body>
+	<form name="aspnetForm" method="post" action="./qualifyingincome.aspx" id="aspnetForm" class="custom">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJNDMyNDU0NjAzD2QWAmYPZBYCAgMPZBYGZg9kFgQCAQ8PFgIeCEltYWdlVXJsBVxodHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vbG9nb3MvM2MxYjJiN2UtYmM5NS00NmU4LTg3YzQtOTFjMTYyZDU0OTI2LkpQR2RkAgMPDxYCHgRUZXh0BVk8YSBjbGFzcz0ic2l0ZS1waG9uZSBwdWxsLXJpZ2h0IiBocmVmPSJ0ZWw6KDcwMykgNTA1LTI5OTkiPkNhbGwgVG9kYXkhICg3MDMpIDUwNS0yOTk5PC9hPmRkAgIPZBYEAgEPFgIfAQVyPGxpPjxhIGhyZWY9Imh0dHA6Ly93d3cubGlua2VkaW4uY29tL2luL2FuZHlzaWtvcmEiPjxpbWcgc3JjPSJhc3NldHMvaW1nL3NvY2lhbC1pY29ucy9saW5rZWRpbl8xNi5wbmciIC8+PC9hPjwvbGk+ZAIFDxYCHwEFaTxsaT48YSBocmVmPSJodHRwOi8vdHdpdHRlci5jb20vYW5keXNpa29yYSI+PGltZyBzcmM9ImFzc2V0cy9pbWcvc29jaWFsLWljb25zL3R3aXR0ZXJfMTYucG5nIiAvPjwvYT48L2xpPmQCAw9kFgQCAQ9kFhQCAQ8PFgIfAQULQW5keSBTaWtvcmFkZAIDDw8WAh8BBQ5CcmFuY2ggTWFuYWdlcmRkAgUPDxYCHwEFBjIwNzkxMGRkAgcPDxYCHwEFGUNvbG9uaWFsIE1vcnRnYWdlIENhcGl0YWxkZAIJDw8WAh8BBTIxMTg5MCBTdW5yaXNlIFZhbGxleSBEcmlpdmU8YnIgLz5SZXN0b24sIFZBICAyMDE5MWRkAgsPDxYCHwEFOFA6IDxhIGhyZWY9InRlbDooNzAzKSA1MDUtMjk5OSI+KDcwMykgNTA1LTI5OTk8L2E+PGJyIC8+ZGQCDQ8PFgIfAQUVRjogNzAzLTgyMi03MTcxPGJyIC8+ZGQCDw8WAh8BBTw8YSBocmVmPSJtYWlsdG86YW5keUBhbmR5c2lrb3JhLmNvbSI+YW5keUBhbmR5c2lrb3JhLmNvbTwvYT5kAhEPFgIfAQUbVzogd3d3LkNvbG9uaWFsTUMuY29tPGJyIC8+ZAITDw8WAh8ABV1odHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vcGhvdG9zLzNjMWIyYjdlLWJjOTUtNDZlOC04N2M0LTkxYzE2MmQ1NDkyNi5qcGdkZAIDD2QWAmYPZBYCAgEPFgIfAWVkZE1Xib0sJWBe5CdswHhzRE5f0Iyz79FSOlNe8VEik6Mu" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="06FDE4E3" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABG9MOwRc9vWIzIWEZTaoAZqogmBS619ufGOQCRch/rjpnWuyN84WFsUAiFY9gke9kSV43xXrzJdwqsfAKvR6iPS9AHOABIAWK7lNkZJF5mVB5l1LyzftyNHW3dVeAl8qRHd4x1Eudfw0tJhDvxFDHSp2L4Uf6GSC21dTyKtI6vlTHkIAZEUuKdjMTDZv6UhuJsnJMaGF6vBUMMDfnoH7BuCRhpJeEveoLeg6TFutCXtTw6/dJPN1qi5eqpg/XotidZN1nwC5sFQu3QrVOYIc0DZFTkOdk8Y91W2hcJK6QYe6CLBUgbNQW8pCAdCP7WyvTKegb2xEb3zI7SG0L0EQkPnnsHKH2OwBN5cpgal3/tVN7jlba2GAjlQhSj5MB9+z9tE2H0xqH6VDOFyO3LlxaCW" />
+</div>
+
+	<section id="notification-section" class="hide-for-small">
+		<div class="row">
+			<div class="small-12 large-12 columns">
+				<!--[if lt IE 7]>
+				<div class="alert-box alert">
+	            <p>You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+					<a href="" class="close"><i class="icon-remove-circle"></i></a>
+		  		</div>
+				<![endif]-->
+				
+			</div>
+		</div>
+	</section>
+	
+
+	<section id="main-content-section">
+            <a name="calc"></a>
+			<div class="large-5 columns">
+				<div class="panel radius widget">
+					<div class="widget-header">
+									<div id="ctl00_RightArea_SpeachBubble1_speachbubbledisplay" class="triangle-border top"></div>
+					</div>
+					<div class="widget-content">
+						<div class="row">
+							<div class="large-12 columns">
+								
+	<script type="text/javascript">
+		$(function () {
+		    $('#ctl00_RightArea_SpeachBubble1_speachbubbledisplay')[0].innerHTML = "<strong>This calculator estimates the income needed to qualify for a loan.</strong> Enter in the monthly payment, taxes, home owners insurance, other debt payments, sale price of home and expected down payment, and the calculator will give you an estimate of how much income you will probably need to qualify.";
+		});
+	</script>
+	<div id="calculator">
+		<div id="input">
+			<h2>Change these fields as desired: </h2>
+			<table>
+				<tr>
+					<td class="labelcell">
+						Sale Price of Home
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="hv" name="hv" value="$250,000" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Down Payment
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="dp" name="dp" value="$50,000" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Monthly mortgage principal/interest:
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="pi" name="pi" value="$1,500" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Expected Annual Property Tax:
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="pt" name="pt" value="$150" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Expected Annual Home Insurance
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="hi" name="hi" value="$50" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Expected Monthly Debt Payments<br />
+						(car/student loans, credit cards, etc.)
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="mi" name="mi" value="$400" />
+						</div>
+					</td>
+				</tr>
+			</table>
+			<input class="formButton" type="button" value="Calculate Now" onclick="PerformMagic();" />
+		</div>
+		<div id="output" style="display: none;">
+			<input class="formButton" type="button" value="Go Back" onclick="GoBack();" />
+			<div id="results">
+			</div>
+			<div>
+				<p><b>PMI</b> appears above if your downpayment is less than 20% of your home value. That means you must pay an extra .32% to .90% a year until you break the 20% criteria. They also add that into the income requirement.</p>
+				<p>The 28% income is based on PITI (Principal+Interest+Tax+Insurance) or more specifically, the mortgage principal plus interest amount plus your monthly property tax and home insurance the lender typically holds in an escrow account for you. This monthly amount is listed above as <em>Total monthly lender payment</em>.</p>
+				<p>The 36% income is based on the PITI (mortgage principal plus interest amount plus your monthly property tax and home insurance), <b>PLUS</b> any other debt payments you must pay every month. This total amount is the sum described above as <em>Total monthly debt payment</em>.</p>
+				<p>As long as your total income (salary plus interest, rental and dividend income) meets <b>BOTH</b> of the two incomes you will probably qualify. So you will need an annual income of <span id="AI"></span>.</p>
+			</div>
+			<p class="disclosure">Information and interactive calculators are made available to you, as self-help tools for your independent use and are not intended to provide investment advice. We cannot and do not guarantee their applicability or accuracy in regards to anyone’s individual circumstances. All examples are hypothetical and are for illustrative purposes. Related to tax implications, property purchase and sale prices, and loan terms clients need to seek personalized advice from qualified real estate and tax professionals.</p>
+		</div>
+	</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<footer>
+		<div class="row">
+			<div class="large-12 columns">
+			</div>
+		</div>
+	</footer>
+
+	</form>
+</body>
+</html>

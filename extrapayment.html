@@ -1,0 +1,474 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><meta name="apple-mobile-web-app-capable" content="yes" />
+	<link rel="stylesheet" href="css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/wizard-overrides.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/custom.modernizr.js"></script>
+	<script src="js/wizard.js"></script>	
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+	
+	<script type="text/javascript">
+		function PerformMagic() {
+			var Option = document.getElementById('H').value;
+			var CurrentBalance = forceNumber(document.getElementById('B').value);
+			var Payment = forceNumber(document.getElementById('P').value);
+			var OriginalBalance = forceNumber(document.getElementById('O').value);
+			var FirstMonth = forceNumber(document.getElementById('M').value);
+			var FirstYear = forceNumber(document.getElementById('Y').value);
+			var Length = forceNumber(document.getElementById('L').value);
+			var InterestRate = forceNumber(document.getElementById('I').value);
+			var MonthlyInterest = InterestRate / 1200;
+			var AdditionalPayment = document.getElementById('A').value;
+			var Biweekly = false;
+			if (AdditionalPayment.toLowerCase() == 'b') {
+				Biweekly = true;
+				AdditionalPayment = 0;
+			}
+			else {
+				AdditionalPayment = forceNumber(AdditionalPayment);
+			}
+			var IncreasePaymentPercent = forceNumber(document.getElementById('X').value);
+			var ShowTable = document.getElementById('C').value;
+
+
+			if (Option == 'B') {
+				var TotalMonths = Length * 12;
+				var Temp = (1.0 / Math.pow((1 + MonthlyInterest), TotalMonths));
+
+				if (Temp < 1) {
+					Payment = OriginalBalance * MonthlyInterest / (1 - Temp);
+				}
+				else {
+					Payment = OriginalBalance / TotalMonths;
+				}
+
+				Payment = Math.round(Payment * 100) / 100;
+
+				document.getElementById('calcedPayment').innerHTML = formatDollars(Payment);
+				document.getElementById('paymentCalculated').style.display = 'block';
+
+				var now = new Date;
+				var ThisYear = now.getFullYear();
+				var ThisMonth = now.getMonth() + 1;
+
+				var MonthsPaid = (ThisYear * 12 + ThisMonth) - (FirstYear * 12 + FirstMonth) + 1;
+				var StartingBalance = OriginalBalance;
+
+				for (var i = 0; i < MonthsPaid; i++) {
+					StartingBalance = StartingBalance - Payment + (StartingBalance * MonthlyInterest);
+				}
+				CurrentBalance = StartingBalance;
+
+				document.getElementById('givenMonth').innerHTML = FirstMonth;
+				document.getElementById('givenYear').innerHTML = FirstYear;
+				document.getElementById('monthsPaid').innerHTML = MonthsPaid;
+				document.getElementById('currentMonth').innerHTML = ThisMonth;
+				document.getElementById('currentYear').innerHTML = ThisYear;
+				document.getElementById('givenOriginal').innerHTML = formatDollars(OriginalBalance);
+				document.getElementById('calcedCurrent').innerHTML = formatDollars(CurrentBalance);
+				document.getElementById('balanceCalculated').style.display = 'block';
+			}
+
+			var TotalPayment;
+			var BiWeeklyPayment;
+			if (Biweekly) {
+				TotalPayment = Payment;
+				BiWeeklyPayment = Payment / 2;
+
+				document.getElementById('biOriginal').innerHTML = formatDollars(CurrentBalance);
+				document.getElementById('biInterest').innerHTML = InterestRate;
+				document.getElementById('biPayment').innerHTML = formatDollars(TotalPayment);
+				document.getElementById('biweekly').innerHTML = formatDollars(BiWeeklyPayment);
+				document.getElementById('biweeklyPayments').style.display = 'block';
+			}
+			else {
+				TotalPayment = Payment + AdditionalPayment;
+
+				document.getElementById('addBalance').innerHTML = formatDollars(CurrentBalance);
+				document.getElementById('addInterest').innerHTML = InterestRate;
+				document.getElementById('addPayment').innerHTML = formatDollars(Payment);
+				document.getElementById('addAddPayment').innerHTML = formatDollars(AdditionalPayment);
+				document.getElementById('addTotal').innerHTML = formatDollars(TotalPayment);
+				document.getElementById('additionalPayments').style.display = 'block';
+			}
+
+			var IncreaseMultiplier = 1;
+			if (IncreasePaymentPercent > 0) {
+				IncreaseMultiplier = 1 + (IncreasePaymentPercent / 100);
+				document.getElementById('incPercent').innerHTML = IncreasePaymentPercent;
+				document.getElementById('incPayments').style.display = 'block';
+			}
+
+			var MonthCount = 0;
+			var TotalInterest = 0;
+			while ((CurrentBalance > 0) && (MonthCount < 1200)) {
+				MonthCount++;
+				var CurrentInterest = CurrentBalance * MonthlyInterest;
+				TotalInterest = TotalInterest + CurrentInterest;
+				var PrincipalPaid = TotalPayment - CurrentInterest;
+				CurrentBalance = CurrentBalance - PrincipalPaid;
+
+				var ResultTable = document.getElementById('resultsTable');
+				var TableBody = ResultTable.getElementsByTagName('tbody')[0];
+				var NewRow = document.createElement('tr');
+
+				var Cell1 = document.createElement('td');
+				Cell1.innerHTML = MonthCount;
+				var Cell2 = document.createElement('td');
+				Cell2.innerHTML = Math.round((MonthCount / 12) * 100) / 100;
+				var Cell3 = document.createElement('td');
+				Cell3.innerHTML = formatDollars(CurrentBalance);
+				var Cell4 = document.createElement('td');
+				Cell4.innerHTML = formatDollars(TotalPayment);
+				var Cell5 = document.createElement('td');
+				Cell5.innerHTML = formatDollars(CurrentInterest);
+				var Cell6 = document.createElement('td');
+				Cell6.innerHTML = formatDollars(PrincipalPaid);
+
+				NewRow.appendChild(Cell1);
+				NewRow.appendChild(Cell2);
+				NewRow.appendChild(Cell3);
+				NewRow.appendChild(Cell4);
+				NewRow.appendChild(Cell5);
+				NewRow.appendChild(Cell6);
+				TableBody.appendChild(NewRow);
+
+				if ((Biweekly) && (MonthCount % 6) == 0) {
+
+					CurrentBalance = CurrentBalance - BiWeeklyPayment;
+
+					var BWRow = document.createElement('tr');
+
+					var Cell7 = document.createElement('td');
+					Cell7.innerHTML = 'BW';
+					var Cell8 = document.createElement('td');
+					Cell8.innerHTML = '-';
+					var Cell9 = document.createElement('td');
+					Cell9.innerHTML = formatDollars(CurrentBalance);
+					var Cell10 = document.createElement('td');
+					Cell10.innerHTML = formatDollars(BiWeeklyPayment);
+					var Cell11 = document.createElement('td');
+					Cell11.innerHTML = '-';
+					var Cell12 = document.createElement('td');
+					Cell12.innerHTML = formatDollars(BiWeeklyPayment);
+
+					BWRow.appendChild(Cell7);
+					BWRow.appendChild(Cell8);
+					BWRow.appendChild(Cell9);
+					BWRow.appendChild(Cell10);
+					BWRow.appendChild(Cell11);
+					BWRow.appendChild(Cell12);
+					TableBody.appendChild(BWRow);
+				}
+
+				if ((IncreasePaymentPercent > 0) && ((MonthCount % 12) == 0)) {
+					TotalPayment = TotalPayment * IncreaseMultiplier;
+					BiWeeklyPayment = BiWeeklyPayment * IncreaseMultiplier;
+				}
+			}
+
+			if (ShowTable != 'Y') {
+				document.getElementById('resultsTable').style.display = 'none';
+			}
+
+			document.getElementById('terminateMonths').innerHTML = MonthCount;
+			document.getElementById('terminateYears').innerHTML = Math.round((MonthCount / 12) * 100) / 100;
+
+			document.getElementById('input').style.display = 'none';
+			document.getElementById('output').style.display = 'block';
+		}
+
+		function GoBack() {
+			document.location.href = document.location.href;
+		}
+
+		function forceNumber(n) {
+			n = n.replace('$', '');
+			n = n.replace('%', '');
+			n = n.replace(',', '');
+			returnval = parseFloat(n);
+			if (isNaN(returnval)) {
+				return 0;
+			}
+			else {
+				return returnval;
+			}
+		}
+
+		function formatCurrency(num) {
+			num = num.toString().replace(/\$|\,/g, '');
+			if (isNaN(num))
+				num = "0";
+			sign = (num == (num = Math.abs(num)));
+			num = Math.floor(num * 100 + 0.50000000001);
+			cents = num % 100;
+			num = Math.floor(num / 100).toString();
+			if (cents < 10)
+				cents = "0" + cents;
+			for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+				num = num.substring(0, num.length - (4 * i + 3)) + ',' +
+            num.substring(num.length - (4 * i + 3));
+			return (((sign) ? '' : '-') + '$' + num + '.' + cents);
+		}
+
+		function formatDollars(num) {
+			var numCurrency = formatCurrency(num);
+			if (numCurrency.indexOf('.', 0) > 0)
+				return numCurrency.substr(0, numCurrency.indexOf('.', 0));
+			else
+				return numCurrency;
+		}
+	</script>
+</head>
+<body>
+	<form name="aspnetForm" method="post" action="./extrapayment.aspx" id="aspnetForm" class="custom">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJNDMyNDU0NjAzD2QWAmYPZBYCAgMPZBYGZg9kFgQCAQ8PFgIeCEltYWdlVXJsBVxodHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vbG9nb3MvM2MxYjJiN2UtYmM5NS00NmU4LTg3YzQtOTFjMTYyZDU0OTI2LkpQR2RkAgMPDxYCHgRUZXh0BVk8YSBjbGFzcz0ic2l0ZS1waG9uZSBwdWxsLXJpZ2h0IiBocmVmPSJ0ZWw6KDcwMykgNTA1LTI5OTkiPkNhbGwgVG9kYXkhICg3MDMpIDUwNS0yOTk5PC9hPmRkAgIPZBYEAgEPFgIfAQVyPGxpPjxhIGhyZWY9Imh0dHA6Ly93d3cubGlua2VkaW4uY29tL2luL2FuZHlzaWtvcmEiPjxpbWcgc3JjPSJhc3NldHMvaW1nL3NvY2lhbC1pY29ucy9saW5rZWRpbl8xNi5wbmciIC8+PC9hPjwvbGk+ZAIFDxYCHwEFaTxsaT48YSBocmVmPSJodHRwOi8vdHdpdHRlci5jb20vYW5keXNpa29yYSI+PGltZyBzcmM9ImFzc2V0cy9pbWcvc29jaWFsLWljb25zL3R3aXR0ZXJfMTYucG5nIiAvPjwvYT48L2xpPmQCAw9kFgQCAQ9kFhQCAQ8PFgIfAQULQW5keSBTaWtvcmFkZAIDDw8WAh8BBQ5CcmFuY2ggTWFuYWdlcmRkAgUPDxYCHwEFBjIwNzkxMGRkAgcPDxYCHwEFGUNvbG9uaWFsIE1vcnRnYWdlIENhcGl0YWxkZAIJDw8WAh8BBTIxMTg5MCBTdW5yaXNlIFZhbGxleSBEcmlpdmU8YnIgLz5SZXN0b24sIFZBICAyMDE5MWRkAgsPDxYCHwEFOFA6IDxhIGhyZWY9InRlbDooNzAzKSA1MDUtMjk5OSI+KDcwMykgNTA1LTI5OTk8L2E+PGJyIC8+ZGQCDQ8PFgIfAQUVRjogNzAzLTgyMi03MTcxPGJyIC8+ZGQCDw8WAh8BBTw8YSBocmVmPSJtYWlsdG86YW5keUBhbmR5c2lrb3JhLmNvbSI+YW5keUBhbmR5c2lrb3JhLmNvbTwvYT5kAhEPFgIfAQUbVzogd3d3LkNvbG9uaWFsTUMuY29tPGJyIC8+ZAITDw8WAh8ABV1odHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vcGhvdG9zLzNjMWIyYjdlLWJjOTUtNDZlOC04N2M0LTkxYzE2MmQ1NDkyNi5qcGdkZAIDD2QWAmYPZBYCAgEPFgIfAWVkZAaWqHnG4iV0SyDjvzbrHKoNxZTZRTJEfcP8Azfjpev4" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="3AD7256A" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABEe+SMqflNbUVbGe6JdXs7pogmBS619ufGOQCRch/rjpnWuyN84WFsUAiFY9gke9kSV43xXrzJdwqsfAKvR6iPS9AHOABIAWK7lNkZJF5mVB5l1LyzftyNHW3dVeAl8qRHd4x1Eudfw0tJhDvxFDHSp2L4Uf6GSC21dTyKtI6vlTHkIAZEUuKdjMTDZv6UhuJsnJMaGF6vBUMMDfnoH7BuCRhpJeEveoLeg6TFutCXtTw6/dJPN1qi5eqpg/XotidZN1nwC5sFQu3QrVOYIc0DZFTkOdk8Y91W2hcJK6QYe6CLBUgbNQW8pCAdCP7WyvTKegb2xEb3zI7SG0L0EQkPnnsHKH2OwBN5cpgal3/tVN1j3xkJRxTNbZEWt1gy8LeP5E6y8u61uhBrL2bmiR5y3" />
+</div>
+	
+	<section id="notification-section" class="hide-for-small">
+		<div class="row">
+			<div class="small-12 large-12 columns">
+				<!--[if lt IE 7]>
+				<div class="alert-box alert">
+	            <p>You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+					<a href="" class="close"><i class="icon-remove-circle"></i></a>
+		  		</div>
+				<![endif]-->
+				
+			</div>
+		</div>
+	</section>
+	
+	<section id="main-content-section">
+	<section id="main-content-section">
+		
+			<a name="calc"></a>
+			<div class="large-5 columns">
+				<div class="panel radius widget">
+					<div class="widget-header">
+						<div id="ctl00_RightArea_SpeachBubble1_speachbubbledisplay" class="triangle-border top"></div>
+					</div>
+					<div class="widget-content">
+						<div class="row">
+							<div class="large-12 columns">
+								
+	<script type="text/javascript">
+		$(function () {
+		    $('#ctl00_RightArea_SpeachBubble1_speachbubbledisplay')[0].innerHTML = "<strong>This calculator compares the impact of extra payments.</strong>   Choose Option A or B depending on what you know about your current mortgage.  Enter your interest rate, the additional amount you’d like to pay, if you’d like to increase that over time.  Then Calculate Mortgage Reduction to see your savings.";
+		});
+	</script>
+	<div id="calculator">
+		<div id="input">
+			<h2>Change these fields as desired:</h2>
+			<table>
+				<tr>
+					<td class="labelcell">
+						Choose the Option:
+					</td>
+					<td class="valuecell">
+						<div>
+							<select name="H" id="H">
+								<option value="A">Option A</option>
+								<option value="B">Option B</option>
+							</select>
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell" colspan="2">
+						<h4>
+							Option A:</h4>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						A1. Current Balance (if known)
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="B" name="B" value="$95,000" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						A2. Current Principal and Interest Monthly Payment
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="P" name="P" value="$733.76" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell" colspan="2">
+						<h4>
+							Option B:</h4>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						B1. Original Principal Balance (otherwise)
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="O" name="O" value="$100,000" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						B2. Month of First Payment (otherwise)
+					</td>
+					<td class="valuecell">
+						<div>
+							<select id="M" name="M">
+								<option value="1">Jan</option>
+								<option value="2">Feb</option>
+								<option value="3">Mar</option>
+								<option value="4">April</option>
+								<option value="5">May</option>
+								<option value="6">June</option>
+								<option value="7">Jul</option>
+								<option value="8">Aug</option>
+								<option value="9">Sept</option>
+								<option value="10">Oct</option>
+								<option value="11">Nov</option>
+								<option value="12">Dec</option>
+							</select>
+							<input type="text" id="Y" name="Y" value="1995" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						B3. Length of Mortgage (Years)
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="L" name="L" value="30" />
+						</div>
+					</td>
+				</tr>
+			</table>
+			<h2>Fill out the following table for EITHER case:</h2>
+			<table>
+				<tr>
+					<td class="labelcell" colspan="2">
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Current Annual Interest Rate
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="I" name="I" value="8.00%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Additional Monthly Pre-Payment<br />
+						(Enter B here to do a biweekly conversion from here.)
+					</td>
+					<td class="valuecell">
+						<input type="text" id="A" name="A" value="$50.00" />
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Increase Monthly Payment each year by
+					</td>
+					<td class="valuecell">
+						<input type="text" id="X" name="X" value="0.00%" />
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Show Table
+					</td>
+					<td class="valuecell">
+						<select name="C" id="C">
+							<option value="Y">Yes</option>
+							<option value="N">No</option>
+						</select>
+					</td>
+				</tr>
+			</table>
+			<input class="formButton" type="button" value="Calculate Mortgage Reduction" onclick="PerformMagic();" />
+		</div>
+		<div id="output" style="display: none;">
+			<input class="formButton" type="button" value="Go Back" onclick="GoBack();" />
+			<div id="paymentCalculated" style="display: none">
+				<h3>Your Monthly Payment (excl. Tax & Insur.) is <span id="calcedPayment"></span></h3>
+			</div>
+			<div id="balanceCalculated" style="display: none">
+				<h3>Since your first payment was in <span id="givenMonth"></span>/<span id="givenYear"></span>, you have made <span id="monthsPaid"></span>&nbsp;payments, so your balance (<span id="currentMonth"></span>/<span id="currentYear"></span>) has changed from <span id="givenOriginal"></span>&nbsp;to <span id="calcedCurrent"></span></h3>
+			</div>
+			<div id="biweeklyPayments" style="display: none">
+				<h3>Starting with <span id="biOriginal"></span>&nbsp;at <span id="biInterest"></span>% and a payment of <span id="biPayment"></span></h3>
+				<h3>Using a biweekly schedule means two extra principal payments a year of <span id="biweekly"></span></h3>
+			</div>
+			<div id="additionalPayments" style="display: none">
+				<h3>Starting with <span id="addBalance"></span>&nbsp;at <span id="addInterest"></span>% and a payment of <span id="addPayment"></span></h3>
+				<h3>Paying an extra <span id="addAddPayment"></span>&nbsp;a month (<span id="addTotal"></span>/month total) means:</h3>
+			</div>
+			<div id="incPayments" style="display: none">
+				<h3>Each year the Monthly Payment will increase by <span id="incPercent"></span>%</h3>
+			</div>
+			<h3>Your loan will terminate in <span id="terminateMonths"></span>&nbsp;months (<span id="terminateYears"></span>&nbsp;years)</h3>
+			<p><b>NOTE:</b> Make sure prepaying is really the best alternative for you! Check the prepayment versus investing comparison for more info. And for goodness sakes, pay off all your <b>high interest</b> credit cards and car loans before even considering prepaying your mortgage. It doesn't make much sense to pay down a 8% deductible mortgage when you are paying 18% on your credit card balance!</p>
+			<table id="resultsTable" class="resultsTable">
+				<tr>
+					<th class="th">
+						Month
+					</th>
+					<th class="th">
+						(Year)
+					</th>
+					<th class="th">
+						Balance
+					</th>
+					<th class="th">
+						Payment
+					</th>
+					<th class="th">
+						Interest
+					</th>
+					<th class="th">
+						Principal Paid
+					</th>
+				</tr>
+			</table>
+			<p class="disclosure">Information and interactive calculators are made available to you, as self-help tools for your independent use and are not intended to provide investment advice. We cannot and do not guarantee their applicability or accuracy in regards to anyone’s individual circumstances. All examples are hypothetical and are for illustrative purposes. Related to tax implications, property purchase and sale prices, and loan terms clients need to seek personalized advice from qualified real estate and tax professionals.</p>
+		</div>
+	</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<footer>
+		<div class="row">
+			<div class="large-12 columns">
+			</div>
+		</div>
+	</footer>
+
+	</form>
+</body>
+</html>

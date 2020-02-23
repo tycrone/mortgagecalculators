@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html class="no-js" lang="en">
+<head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><meta name="apple-mobile-web-app-capable" content="yes" />
+	<link rel="stylesheet" href="css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/wizard-overrides.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/custom.modernizr.js"></script>
+	<script src="js/wizard.js"></script>
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+	
+    <script type="text/javascript">
+        function RecalcPayment() {
+            if (document.getElementById('PT').value == 'IO') {
+                var L = forceNumber(document.getElementById('L').value);
+                var R = forceNumber(document.getElementById('R').value);
+                document.getElementById('P').value = formatCurrency(Math.floor(L * R / 12) / 100);
+            }
+            else if (document.getElementById('PT').value == '30') {
+                var L = forceNumber(document.getElementById('L').value);
+                var R = forceNumber(document.getElementById('R').value);
+                var J = eval(forceNumber(document.getElementById('R').value)) / 1200;
+                var HF = J / (1 - Math.pow(1 + J, -360));
+                document.getElementById('P').value = formatCurrency(Math.floor(100 * L * HF) / 100);
+            }
+            else if (document.getElementById('PT').value == '10') {
+                var L = forceNumber(document.getElementById('L').value);
+                var R = forceNumber(document.getElementById('R').value);
+                var J = eval(forceNumber(document.getElementById('R').value)) / 1200;
+                var HF = J / (1 - Math.pow(1 + J, -120));
+                document.getElementById('P').value = formatCurrency(Math.floor(100 * L * HF) / 100);
+            }
+        }
+        function PerformMagic() {
+
+            var ResultTable = document.getElementById('resultstable');
+            var TableBody = ResultTable.getElementsByTagName('tbody')[0];
+            
+            var Balance = forceNumber(document.getElementById('L').value);
+            var Months = forceNumber(document.getElementById('M').value);
+            var Rate = forceNumber(document.getElementById('R').value);
+            var Withdrawl = forceNumber(document.getElementById('W').value);
+            var Payment = forceNumber(document.getElementById('P').value);
+            var TaxBracket = forceNumber(document.getElementById('T').value);
+
+            var NewBalance = 0;
+            var TotalInterest = 0;
+
+            for (i = 0; i < Months; i++)
+            {
+                var CurrentInt = Balance * Rate/1200;
+                TotalInterest += CurrentInt;
+
+                NewBalance = Balance + CurrentInt + Withdrawl - Payment;
+
+                var NewRow = document.createElement('tr');
+
+                var Cell1 = document.createElement('td');
+                Cell1.innerHTML = (i + 1);
+                var Cell2 = document.createElement('td');
+                Cell2.innerHTML = formatDollars(Balance);
+                var Cell3 = document.createElement('td');
+                Cell3.innerHTML = formatCurrency(CurrentInt);
+                var Cell4 = document.createElement('td');
+                Cell4.innerHTML = formatCurrency(Payment);
+                var Cell5 = document.createElement('td');
+                Cell5.innerHTML = formatCurrency(Withdrawl);
+                var Cell6 = document.createElement('td');
+                Cell6.innerHTML = formatDollars(NewBalance);
+
+                NewRow.appendChild(Cell1);
+                NewRow.appendChild(Cell2);
+                NewRow.appendChild(Cell3);
+                NewRow.appendChild(Cell4);
+                NewRow.appendChild(Cell5);
+                NewRow.appendChild(Cell6);
+
+                TableBody.appendChild(NewRow);
+
+                Balance = NewBalance;
+            }
+
+            var ResultsFooter = document.getElementById('resultsfooter');
+
+            ResultsFooter.innerHTML += "<p>So after " + Months + " months you still have a balance of " + formatCurrency(Balance) + " and have <em>saved</em> " + formatCurrency(TotalInterest * TaxBracket/100) + " in taxes by paying " + formatCurrency(TotalInterest) + " in total interest*</p>";
+            ResultsFooter.innerHTML += "<h3>Which means " + formatCurrency(TotalInterest * (1 - TaxBracket/100)) + " in non-deducted interest payments*</h3>";
+            ResultsFooter.innerHTML += "<p>*Assumes you itemize and that you already have enough other itemized deductions to push these interest payments over your standard deduction for your filing status.</p>";
+
+            document.getElementById('input').style.display = 'none';
+            document.getElementById('output').style.display = 'block';
+        }
+
+        function GoBack() {
+            document.location.href = document.location.href;
+        }
+
+        function forceNumber(n) {
+            n = n.replace('$', '');
+            n = n.replace('%', '');
+            n = n.replace(',', '');
+            returnval = parseFloat(n);
+            if (isNaN(returnval)) {
+                return 0;
+            }
+            else {
+                return returnval;
+            }
+        }
+
+        function formatCurrency(num) {
+            num = num.toString().replace(/\$|\,/g, '');
+            if (isNaN(num))
+                num = "0";
+            sign = (num == (num = Math.abs(num)));
+            num = Math.floor(num * 100 + 0.50000000001);
+            cents = num % 100;
+            num = Math.floor(num / 100).toString();
+            if (cents < 10)
+                cents = "0" + cents;
+            for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3) ; i++)
+                num = num.substring(0, num.length - (4 * i + 3)) + ',' +
+            num.substring(num.length - (4 * i + 3));
+            return (((sign) ? '' : '-') + '$' + num + '.' + cents);
+        }
+
+        function formatDollars(num) {
+            var numCurrency = formatCurrency(num);
+            if (numCurrency.indexOf('.', 0) > 0)
+                return numCurrency.substr(0, numCurrency.indexOf('.', 0));
+            else
+                return numCurrency;
+        }
+    </script>
+</head>
+<body>
+	<form name="aspnetForm" method="post" action="./helocanalyser.aspx" id="aspnetForm" class="custom">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJNDMyNDU0NjAzD2QWAmYPZBYCAgMPZBYGZg9kFgQCAQ8PFgIeCEltYWdlVXJsBVxodHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vbG9nb3MvM2MxYjJiN2UtYmM5NS00NmU4LTg3YzQtOTFjMTYyZDU0OTI2LkpQR2RkAgMPDxYCHgRUZXh0BVk8YSBjbGFzcz0ic2l0ZS1waG9uZSBwdWxsLXJpZ2h0IiBocmVmPSJ0ZWw6KDcwMykgNTA1LTI5OTkiPkNhbGwgVG9kYXkhICg3MDMpIDUwNS0yOTk5PC9hPmRkAgIPZBYEAgEPFgIfAQVyPGxpPjxhIGhyZWY9Imh0dHA6Ly93d3cubGlua2VkaW4uY29tL2luL2FuZHlzaWtvcmEiPjxpbWcgc3JjPSJhc3NldHMvaW1nL3NvY2lhbC1pY29ucy9saW5rZWRpbl8xNi5wbmciIC8+PC9hPjwvbGk+ZAIFDxYCHwEFaTxsaT48YSBocmVmPSJodHRwOi8vdHdpdHRlci5jb20vYW5keXNpa29yYSI+PGltZyBzcmM9ImFzc2V0cy9pbWcvc29jaWFsLWljb25zL3R3aXR0ZXJfMTYucG5nIiAvPjwvYT48L2xpPmQCAw9kFgQCAQ9kFhQCAQ8PFgIfAQULQW5keSBTaWtvcmFkZAIDDw8WAh8BBQ5CcmFuY2ggTWFuYWdlcmRkAgUPDxYCHwEFBjIwNzkxMGRkAgcPDxYCHwEFGUNvbG9uaWFsIE1vcnRnYWdlIENhcGl0YWxkZAIJDw8WAh8BBTIxMTg5MCBTdW5yaXNlIFZhbGxleSBEcmlpdmU8YnIgLz5SZXN0b24sIFZBICAyMDE5MWRkAgsPDxYCHwEFOFA6IDxhIGhyZWY9InRlbDooNzAzKSA1MDUtMjk5OSI+KDcwMykgNTA1LTI5OTk8L2E+PGJyIC8+ZGQCDQ8PFgIfAQUVRjogNzAzLTgyMi03MTcxPGJyIC8+ZGQCDw8WAh8BBTw8YSBocmVmPSJtYWlsdG86YW5keUBhbmR5c2lrb3JhLmNvbSI+YW5keUBhbmR5c2lrb3JhLmNvbTwvYT5kAhEPFgIfAQUbVzogd3d3LkNvbG9uaWFsTUMuY29tPGJyIC8+ZAITDw8WAh8ABV1odHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vcGhvdG9zLzNjMWIyYjdlLWJjOTUtNDZlOC04N2M0LTkxYzE2MmQ1NDkyNi5qcGdkZAIDD2QWAmYPZBYCAgEPFgIfAWVkZL8uOV00vGOFQLO6wCs1GbLNQSS0ZkgTVRnG8FooW5ic" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="DFA8B2EA" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABGZfHnLBHXexiGuC0F6EGdOogmBS619ufGOQCRch/rjpnWuyN84WFsUAiFY9gke9kSV43xXrzJdwqsfAKvR6iPS9AHOABIAWK7lNkZJF5mVB5l1LyzftyNHW3dVeAl8qRHd4x1Eudfw0tJhDvxFDHSp2L4Uf6GSC21dTyKtI6vlTHkIAZEUuKdjMTDZv6UhuJsnJMaGF6vBUMMDfnoH7BuCRhpJeEveoLeg6TFutCXtTw6/dJPN1qi5eqpg/XotidZN1nwC5sFQu3QrVOYIc0DZFTkOdk8Y91W2hcJK6QYe6CLBUgbNQW8pCAdCP7WyvTKegb2xEb3zI7SG0L0EQkPnnsHKH2OwBN5cpgal3/tVN53agiq8xTSQpTIu6M+Ugff3YiJvRgCojdFRdNSdeaXS" />
+</div>
+
+	<section id="notification-section" class="hide-for-small">
+		<div class="row">
+			<div class="small-12 large-12 columns">
+				<!--[if lt IE 7]>
+				<div class="alert-box alert">
+	            <p>You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+					<a href="" class="close"><i class="icon-remove-circle"></i></a>
+		  		</div>
+				<![endif]-->
+				
+			</div>
+		</div>
+	</section>
+
+	<section id="main-content-section">
+            <a name="calc"></a>
+			<div class="large-5 columns">
+				<div class="panel radius widget">
+					<div class="widget-header">
+									<div id="ctl00_RightArea_SpeachBubble1_speachbubbledisplay" class="triangle-border top"></div>
+					</div>
+					<div class="widget-content">
+						<div class="row">
+							<div class="large-12 columns">
+								
+    <script type="text/javascript">
+        $(function () {
+            $('#ctl00_RightArea_SpeachBubble1_speachbubbledisplay')[0].innerHTML = "<strong>This calculator compares interest cost and savings on a Home Equity Line of Credit.</strong>  Enter balance, interest rate, and the monthly payment (or Select a payment type to figure out what the payment would be for Interest Only, 10 year, or 30 year term).  If you take money out each month enter that amount.  Enter your tax bracket and time frame and Calculate Now to see results.";
+        });
+    </script>
+    <div id="calculator">
+        <div id="input">
+            <h2>Change these fields as desired: </h2>
+            <table>
+                <tr>
+                    <td class="labelcell">Current HELOC Balance
+                    </td>
+                    <td class="valuecell">
+                        <div>
+                            <input type="text" id="L" name="L" value="$30,000" />
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="labelcell">Interest Rate
+                    </td>
+                    <td class="valuecell">
+                        <div>
+                            <input type="text" id="R" name="R" value="6%" />
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="labelcell">Monthly Payment
+                    </td>
+                    <td class="valuecell">
+                        <div>
+                            <input type="text" id="P" name="P" value="$150" />
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="labelcell">Type of Payment
+                    </td>
+                    <td class="valuecell">
+                        <div>
+                            <select id="PT" name="PT" onchange="RecalcPayment();">
+                                <option value="IO" selected>Interest Only</option>
+                                <option value="10">10 Year Payment</option>
+                                <option value="30">30 Year Payment</option>
+                            </select>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="labelcell">Monthly Withdrawal
+                    </td>
+                    <td class="valuecell">
+                        <div>
+                            <input type="text" id="W" name="W" value="$0" />
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="labelcell">Federal &amp; State Tax Bracket
+                    </td>
+                    <td class="valuecell">
+                        <div>
+                            <input type="text" id="T" name="T" value="25%" />
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="labelcell">Number of Months to Watch
+                    </td>
+                    <td class="valuecell">
+                        <div>
+                            <input type="text" id="M" name="M" value="120" />
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            <input class="formButton" type="button" value="Calculate Now" onclick="PerformMagic();">
+        </div>
+        <div id="output" style="display: none">
+            <input class="formButton" type="button" value="Go Back" onclick="GoBack();" />
+            <table id="resultstable" class="resultsTable">
+                <tr>
+                    <th class="th">Month
+                    </th>
+                    <th class="th">Start Balance
+                    </th>
+                    <th class="th">Interest
+                    </th>
+                    <th class="th">Paid
+                    </th>
+                    <th class="th">Withdrawn
+                    </th>
+                    <th class="th">New Balance
+                    </th>
+                </tr>
+            </table>
+            <div id="resultsfooter">
+            </div>
+            <p class="disclosure">Information and interactive calculators are made available to you, as self-help tools for your independent use and are not intended to provide investment advice. We cannot and do not guarantee their applicability or accuracy in regards to anyone’s individual circumstances. All examples are hypothetical and are for illustrative purposes. Related to tax implications, property purchase and sale prices, and loan terms clients need to seek personalized advice from qualified real estate and tax professionals.</p>
+        </div>
+    </div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<footer>
+		<div class="row">
+			<div class="large-12 columns">
+			</div>
+		</div>
+	</footer>
+
+	</form>
+</body>
+</html>

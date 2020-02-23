@@ -1,0 +1,391 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" /><meta name="apple-mobile-web-app-capable" content="yes" />
+	<link rel="stylesheet" href="css/normalize.css" />
+	<link rel="stylesheet" href="assets/css/wizard-overrides.css" />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	<script src="js/custom.modernizr.js"></script>
+	<script src="js/wizard.js"></script>
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+	<script type="text/javascript">
+		function PerformMagic() {
+			var LoanAmount = forceNumber(document.getElementById('amt').value);
+			var InterestRate = forceNumber(document.getElementById('int').value);
+			var Length = forceNumber(document.getElementById('len').value);
+			var Option = document.getElementById('opt').options[document.getElementById('opt').selectedIndex].value;
+			var OptionValue = forceNumber(document.getElementById('ovl').value);
+			var FullTable = (document.getElementById('out').options[document.getElementById('out').selectedIndex].value == 'full');
+
+			var Results = document.getElementById('results');
+			var ResultTable = document.getElementById('resultstable');
+			var TableBody = ResultTable.getElementsByTagName('tbody')[0];
+
+			Results.innerHTML += '<p>(For a loan of <b>' + formatDollars(LoanAmount) + '</b> at a interest rate of <b>' + InterestRate + '%</b> for <b>' + Length + '</b> years)</p>';
+
+			var TermMonths = Length * 12;
+			var MonthlyInterest = InterestRate / 1200;
+			var InputError = false;
+
+			if (TermMonths > 0) {
+				if (MonthlyInterest > 0) {
+					MonthlyPayment = LoanAmount * MonthlyInterest / (1 - (Math.pow((1 + MonthlyInterest), (0 - TermMonths))));
+				}
+				else {
+					MonthlyPayment = LoanAmount / TermMonths;
+				}
+				Results.innerHTML += '<h3>The standard payment (principal & interest): ' + formatDollars(MonthlyPayment) + '</h3>';
+			}
+			else {
+				MonthlyPayment = 0;
+			}
+
+			if (Option == 'payment') {
+				if (OptionValue < MonthlyPayment) {
+					Results.innerHTML += '<h3>Sorry, you did not pay enough!</h3>';
+					Results.innerHTML += '<h3>You entered ' + formatDollars(OptionValue) + ', You need ' + formatDollars(MonthlyPayment - OptionValue) + ' more</h3>';
+				}
+				else {
+					Results.innerHTML += '<h3>You entered ' + formatDollars(OptionValue) + '</h3>';
+
+					if (MonthlyPayment > 0) {
+						Results.innerHTML += '<h3>That is an extra ' + formatDollars(OptionValue - MonthlyPayment) + ' each month</h3>';
+					}
+					if ((OptionValue < LoanAmount * MonthlyInterest) && (TermMonths == 0)) {
+						Results.innerHTML += '<h3>But that is less than the interest of ' + formatDollars(LoanAmount * MonthlyInterest) + '</h3>';
+						InputError = true;
+					}
+
+					if (!InputError) {
+						var ExpectedTotalInterest = MonthlyPayment * TermMonths - LoanAmount;
+						var Month = 0;
+						var TotalInterest = 0;
+
+						while (LoanAmount > 0 && Month < 1200) {
+							TotalInterest += LoanAmount * MonthlyInterest;
+							var CurrentInterest = LoanAmount * MonthlyInterest;
+							var CurrentPrincipal = OptionValue - CurrentInterest;
+							LoanAmount = LoanAmount * (1 + MonthlyInterest) - OptionValue;
+							Month++;
+
+							if (FullTable) {
+								var NewRow = document.createElement('tr');
+
+								var Cell1 = document.createElement('td');
+								Cell1.innerHTML = Month;
+								var Cell2 = document.createElement('td');
+								Cell2.innerHTML = formatDollars(CurrentPrincipal);
+								var Cell3 = document.createElement('td');
+								Cell3.innerHTML = formatDollars(CurrentInterest);
+								var Cell4 = document.createElement('td');
+								Cell4.innerHTML = formatDollars(LoanAmount);
+								var Cell5 = document.createElement('td');
+								Cell5.innerHTML = formatDollars(TotalInterest);
+
+								NewRow.appendChild(Cell1);
+								NewRow.appendChild(Cell2);
+								NewRow.appendChild(Cell3);
+								NewRow.appendChild(Cell4);
+								NewRow.appendChild(Cell5);
+
+								TableBody.appendChild(NewRow);
+							}
+						}
+
+						var Year = Math.round(Month * 1000 / 12) / 1000;
+						Results.innerHTML += '<h3>You paid it off in ' + Month + ' months (' + Year + ' years)</h3><ul>';
+
+						if (TermMonths > 0) {
+							Results.innerHTML += '<li>Expected total interest: ' + formatDollars(ExpectedTotalInterest) + '</li>';
+						}
+						Results.innerHTML += '<li>Your total interest: ' + formatDollars(TotalInterest) + '</li>';
+						if (TermMonths > 0) {
+							Results.innerHTML += '<li>Total interest saved: ' + formatDollars(ExpectedTotalInterest - TotalInterest) + '</li>';
+						}
+					}
+				}
+			}
+			else {
+				if ((OptionValue > Length) && (TermMonths > 0)) {
+					Results.innerHTML += '<h3>Sorry, it cannot take longer than the amortization</h3>';
+					Results.innerHTML += '<h3>That is called defaulting on your loan!</h3>';
+				}
+				else {
+					var CTermMonths = OptionValue * 12;
+					var CPayment = MonthlyPayment;
+					var LowPayment = MonthlyPayment;
+					var HighPayment = 10 * MonthlyPayment;
+					var Month = 0;
+					var Cycles = 0;
+					var CAmount = 0;
+
+					if (HighPayment == 0) {
+						HighPayment = LoanAmount;
+					}
+
+					while ((HighPayment > LowPayment + .01) && (Cycles < 1000)) {
+						CPayment = (LowPayment + HighPayment) / 2;
+						Month = 0;
+						CAmount = LoanAmount;
+						Cycles++;
+
+						while ((CAmount > 0) && (Month < 1200)) {
+							CAmount = CAmount * (1 + MonthlyInterest) - CPayment;
+							Month++;
+						}
+
+						if (Month < CTermMonths) {
+							HighPayment = CPayment;
+						}
+						else {
+							LowPayment = CPayment;
+						}
+					}
+
+					if (FullTable) {
+						CAmount = LoanAmount;
+
+						var TotalInterest = 0;
+						var MonthCounter2 = 0;
+						while (CAmount > 0 && MonthCounter2 < 1200) {
+							CurrentInterest = CAmount * MonthlyInterest;
+							CurrentPrincipal = CPayment - CurrentInterest;
+							CAmount = CAmount * (1 + MonthlyInterest) - CPayment;
+							TotalInterest += CurrentInterest;
+							MonthCounter2++;
+
+							var NewRow = document.createElement('tr');
+
+							var Cell1 = document.createElement('td');
+							Cell1.innerHTML = MonthCounter2;
+							var Cell2 = document.createElement('td');
+							Cell2.innerHTML = formatDollars(CurrentPrincipal);
+							var Cell3 = document.createElement('td');
+							Cell3.innerHTML = formatDollars(CurrentInterest);
+							var Cell4 = document.createElement('td');
+							Cell4.innerHTML = formatDollars(CAmount);
+							var Cell5 = document.createElement('td');
+							Cell5.innerHTML = formatDollars(TotalInterest);
+
+							NewRow.appendChild(Cell1);
+							NewRow.appendChild(Cell2);
+							NewRow.appendChild(Cell3);
+							NewRow.appendChild(Cell4);
+							NewRow.appendChild(Cell5);
+
+							TableBody.appendChild(NewRow);
+						}
+					}
+
+					Results.innerHTML += '<h3>Over ' + OptionValue + ' Years</h3>';
+					Results.innerHTML += '<h3>Required Monthly Payment: ' + formatDollars(CPayment) + '</h3>';
+					Results.innerHTML += '<h3>(' + formatDollars(CPayment - MonthlyPayment) + ' extra a month)</h3>';
+					Results.innerHTML += '<h3>Interest Saved: ' + formatDollars((Length * 12 * MonthlyPayment - LoanAmount) - (OptionValue * 12 * CPayment - LoanAmount)) + '</h3>';
+				}
+			}
+
+			if (FullTable) {
+				document.getElementById('resultstable').style.display = 'table';
+			}
+			document.getElementById('input').style.display = 'none';
+			document.getElementById('output').style.display = 'block';
+		}
+
+		function GoBack() {
+			document.location.href = document.location.href;
+		}
+
+		function forceNumber(n) {
+			n = n.replace('$', '');
+			n = n.replace('%', '');
+			n = n.replace(',', '');
+			returnval = parseFloat(n);
+			if (isNaN(returnval)) {
+				return 0;
+			}
+			else {
+				return returnval;
+			}
+		}
+
+		function formatCurrency(num) {
+			num = num.toString().replace(/\$|\,/g, '');
+			if (isNaN(num))
+				num = "0";
+			sign = (num == (num = Math.abs(num)));
+			num = Math.floor(num * 100 + 0.50000000001);
+			cents = num % 100;
+			num = Math.floor(num / 100).toString();
+			if (cents < 10)
+				cents = "0" + cents;
+			for (var i = 0; i < Math.floor((num.length - (1 + i)) / 3); i++)
+				num = num.substring(0, num.length - (4 * i + 3)) + ',' +
+            num.substring(num.length - (4 * i + 3));
+			return (((sign) ? '' : '-') + '$' + num + '.' + cents);
+		}
+
+		function formatDollars(num) {
+			var numCurrency = formatCurrency(num);
+			if (numCurrency.indexOf('.', 0) > 0)
+				return numCurrency.substr(0, numCurrency.indexOf('.', 0));
+			else
+				return numCurrency;
+		}
+	</script>
+</head>
+<body>
+	<form name="aspnetForm" method="post" action="./prepayment.aspx" id="aspnetForm" class="custom">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="/wEPDwUJNDMyNDU0NjAzD2QWAmYPZBYCAgMPZBYGZg9kFgQCAQ8PFgIeCEltYWdlVXJsBVxodHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vbG9nb3MvM2MxYjJiN2UtYmM5NS00NmU4LTg3YzQtOTFjMTYyZDU0OTI2LkpQR2RkAgMPDxYCHgRUZXh0BVk8YSBjbGFzcz0ic2l0ZS1waG9uZSBwdWxsLXJpZ2h0IiBocmVmPSJ0ZWw6KDcwMykgNTA1LTI5OTkiPkNhbGwgVG9kYXkhICg3MDMpIDUwNS0yOTk5PC9hPmRkAgIPZBYEAgEPFgIfAQVyPGxpPjxhIGhyZWY9Imh0dHA6Ly93d3cubGlua2VkaW4uY29tL2luL2FuZHlzaWtvcmEiPjxpbWcgc3JjPSJhc3NldHMvaW1nL3NvY2lhbC1pY29ucy9saW5rZWRpbl8xNi5wbmciIC8+PC9hPjwvbGk+ZAIFDxYCHwEFaTxsaT48YSBocmVmPSJodHRwOi8vdHdpdHRlci5jb20vYW5keXNpa29yYSI+PGltZyBzcmM9ImFzc2V0cy9pbWcvc29jaWFsLWljb25zL3R3aXR0ZXJfMTYucG5nIiAvPjwvYT48L2xpPmQCAw9kFgQCAQ9kFhQCAQ8PFgIfAQULQW5keSBTaWtvcmFkZAIDDw8WAh8BBQ5CcmFuY2ggTWFuYWdlcmRkAgUPDxYCHwEFBjIwNzkxMGRkAgcPDxYCHwEFGUNvbG9uaWFsIE1vcnRnYWdlIENhcGl0YWxkZAIJDw8WAh8BBTIxMTg5MCBTdW5yaXNlIFZhbGxleSBEcmlpdmU8YnIgLz5SZXN0b24sIFZBICAyMDE5MWRkAgsPDxYCHwEFOFA6IDxhIGhyZWY9InRlbDooNzAzKSA1MDUtMjk5OSI+KDcwMykgNTA1LTI5OTk8L2E+PGJyIC8+ZGQCDQ8PFgIfAQUVRjogNzAzLTgyMi03MTcxPGJyIC8+ZGQCDw8WAh8BBTw8YSBocmVmPSJtYWlsdG86YW5keUBhbmR5c2lrb3JhLmNvbSI+YW5keUBhbmR5c2lrb3JhLmNvbTwvYT5kAhEPFgIfAQUbVzogd3d3LkNvbG9uaWFsTUMuY29tPGJyIC8+ZAITDw8WAh8ABV1odHRwczovL3d3dy5ib3Jyb3dzbWFydGFuYWx5c2lzLmNvbS9ncmFwaGljcy8vcGhvdG9zLzNjMWIyYjdlLWJjOTUtNDZlOC04N2M0LTkxYzE2MmQ1NDkyNi5qcGdkZAIDD2QWAmYPZBYCAgEPFgIfAWVkZH+eCSt6IPwTDpEjB+335JRnr2rx1ABflJPtmSgUHSf7" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="737C3A45" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="/wEdABGUq2aJvtHkA0zq+c3aYOhAogmBS619ufGOQCRch/rjpnWuyN84WFsUAiFY9gke9kSV43xXrzJdwqsfAKvR6iPS9AHOABIAWK7lNkZJF5mVB5l1LyzftyNHW3dVeAl8qRHd4x1Eudfw0tJhDvxFDHSp2L4Uf6GSC21dTyKtI6vlTHkIAZEUuKdjMTDZv6UhuJsnJMaGF6vBUMMDfnoH7BuCRhpJeEveoLeg6TFutCXtTw6/dJPN1qi5eqpg/XotidZN1nwC5sFQu3QrVOYIc0DZFTkOdk8Y91W2hcJK6QYe6CLBUgbNQW8pCAdCP7WyvTKegb2xEb3zI7SG0L0EQkPnnsHKH2OwBN5cpgal3/tVN/gsZx5oiOfuerINsFPyhtFExQzPBCVbFNUgeuOwzTgb" />
+</div>
+	
+
+	<section id="notification-section" class="hide-for-small">
+		<div class="row">
+			<div class="small-12 large-12 columns">
+				<!--[if lt IE 7]>
+				<div class="alert-box alert">
+	            <p>You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+					<a href="" class="close"><i class="icon-remove-circle"></i></a>
+		  		</div>
+				<![endif]-->
+				
+			</div>
+		</div>
+	</section>
+	
+
+	<section id="main-content-section">
+		<div class="row">
+			
+			</div>
+			
+            <a name="calc"></a>
+			<div class="large-5 columns">
+				<div class="panel radius widget">
+					<div class="widget-header">
+
+						<div id="ctl00_RightArea_SpeachBubble1_speachbubbledisplay" class="triangle-border top"></div>
+	
+					</div>
+					<div class="widget-content">
+						<div class="row">
+							<div class="large-12 columns">
+								
+	<script type="text/javascript">
+		$(function () {
+		    $('#ctl00_RightArea_SpeachBubble1_speachbubbledisplay')[0].innerHTML = "<strong>This calculator solves for a target payoff date or see how much sooner a payment would pay off a debt.</strong>  Enter a principal amount, interest rate, and the original length of the loan.  Then determine if you’d like to solve for a certain number of years, or pay a fixed amount.  Select Calculate Now to solve for savings.";
+		});
+	</script>
+	<div id="calculator">
+		<div id="input">
+			<h2>Change these fields as desired:</h2>
+			<table>
+				<tr>
+					<td class="labelcell">
+						Loan Amount:
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="amt" name="amt" value="$250,000" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Interest Rate:
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="int" name="int" value="6%" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						Amortized Length of Mortgage<br />
+						(Enter "0" for credit card and other<br />non amortized lines of credit):
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="len" name="len" value="30" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="labelcell">
+						<select name="opt" id="opt">
+							<option value="length">Length of Loan (years)</option>
+							<option value="payment">Monthly Payment</option>
+						</select>
+					</td>
+					<td class="valuecell">
+						<div>
+							<input type="text" id="ovl" name="ovl" value="15" />
+						</div>
+					</td>
+				</tr>
+				<tr>
+					<td class="valuecell" colspan="2">
+						<div>
+							<select name="out" id="out">
+								<option value="summary">Show Summary Only</option>
+								<option value="full">Show Full Table</option>
+							</select>
+						</div>
+					</td>
+				</tr>
+			</table>
+			<input class="formButton" type="button" value="Calculate Now" onclick="PerformMagic();" />
+		</div>
+		<div id="output" style="display: none;">
+			<input class="formButton" type="button" value="Go Back" onclick="GoBack();" />
+			<div id="results">
+			</div>
+			<table id="resultstable" class="resultsTable" style="display: none;">
+				<tr>
+					<th class="th">
+						Month
+					</th>
+					<th class="th">
+						Principal
+					</th>
+					<th class="th">
+						Interest
+					</th>
+					<th class="th">
+						Balance
+					</th>
+					<th class="th">
+						Total Interest
+					</th>
+				</tr>
+			</table>
+			<p class="disclosure">Information and interactive calculators are made available to you, as self-help tools for your independent use and are not intended to provide investment advice. We cannot and do not guarantee their applicability or accuracy in regards to anyone’s individual circumstances. All examples are hypothetical and are for illustrative purposes. Related to tax implications, property purchase and sale prices, and loan terms clients need to seek personalized advice from qualified real estate and tax professionals.</p>
+		</div>
+	</div>
+
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<footer>
+		<div class="row">
+			<div class="large-12 columns">
+			</div>
+		</div>
+	</footer>
+
+	</form>
+</body>
+</html>
